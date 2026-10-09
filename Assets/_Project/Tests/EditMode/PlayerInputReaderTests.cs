@@ -1,3 +1,4 @@
+using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
@@ -150,6 +151,35 @@ namespace Wildshift.Tests
             _reader.enabled = true;
             Assert.That(count, Is.EqualTo(4));
             Assert.That(latest, Is.True);
+        }
+
+        [Test]
+        public void EditorResetAssignsAuthoredActionAssetToEmptyField()
+        {
+            InputActionAsset authored = AssetDatabase.LoadAssetAtPath<InputActionAsset>(InputActionsPath);
+            Assert.That(authored, Is.Not.Null, $"Could not load InputActionAsset at {InputActionsPath}.");
+
+            FieldInfo actionsField = typeof(PlayerInputReader).GetField(
+                "_inputActions", BindingFlags.Instance | BindingFlags.NonPublic);
+            MethodInfo reset = typeof(PlayerInputReader).GetMethod(
+                "Reset", BindingFlags.Instance | BindingFlags.NonPublic);
+            Assert.That(actionsField, Is.Not.Null, "PlayerInputReader is missing its action asset field.");
+            Assert.That(reset, Is.Not.Null, "PlayerInputReader should define the editor-only Reset message.");
+
+            GameObject owner = new GameObject("Reset Input Test");
+            try
+            {
+                // Inactive, so Awake does not run (and log the missing asset) before Reset assigns the field.
+                owner.SetActive(false);
+                PlayerInputReader reader = owner.AddComponent<PlayerInputReader>();
+                reset.Invoke(reader, null);
+
+                Assert.That(actionsField.GetValue(reader), Is.EqualTo(authored));
+            }
+            finally
+            {
+                Object.DestroyImmediate(owner);
+            }
         }
 
         private void QueueKeyboardState(KeyboardState state)

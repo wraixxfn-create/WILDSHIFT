@@ -38,6 +38,12 @@ a `Gameplay` map with all 12 actions above and validates the action names, actio
 control types at initialization. Missing or mismatched configuration is reported to the Console with the
 component as context; the Gameplay map stays disabled rather than partially enabling an invalid configuration.
 
+In the Editor, adding the component or choosing **Reset** from its context menu assigns
+`PlayerInputActions.inputactions` automatically (editor-only; runtime code never looks the asset up). If the Console reports
+`has no Input Action Asset assigned`, the field on that object is empty (the Inspector shows **None**): drag
+`Assets/_Project/Data/Input/PlayerInputActions.inputactions` into it and save the scene. **Missing** means the
+reference points to an asset Unity cannot find, so reassign the asset the same way.
+
 Consumers can read `Move` and `Look` as `Vector2`, poll held buttons with
 `IsButtonPressed(PlayerInputButton)`, or subscribe to the generic `ButtonPressed` and `ButtonReleased`
 events. A button press is emitted once on the action's performed transition and release once on its
