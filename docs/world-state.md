@@ -8,7 +8,7 @@ ecology, faction logic, wildlife AI, or environmental transformation in this lay
 
 | Type | Namespace | Responsibility |
 | --- | --- | --- |
-| `RegionDefinition` | `Wildshift.World` | Shared ScriptableObject authoring data: a stable ID, optional display label, and starting value for the foundation test. It is read-only at runtime. |
+| `RegionDefinition` | `Wildshift.World` | Shared ScriptableObject authoring data: a stable ID, optional display label, optional short description, and starting value for the foundation test. It is read-only at runtime. Authored regions are listed in a `WorldRegionCatalog`, indexed by `WorldRegionRegistry`, and located in space by `WorldRegionLocator`; see [`world-regions.md`](world-regions.md). |
 | `RegionState` | `Wildshift.World` | `[Serializable]` plain C# runtime data created as a fresh copy for one registered region. Currently holds the stable ID, display label, and one foundation-only mutable integer (`TestValue`). |
 | `WorldStateService` | `Wildshift.World` | Non-global in-memory owner of explicitly registered region states. Uses stable IDs for lookup, exposes an ordered snapshot of every registered state for callers such as persistence, and returns descriptive errors for invalid, duplicate, or unknown IDs. |
 
