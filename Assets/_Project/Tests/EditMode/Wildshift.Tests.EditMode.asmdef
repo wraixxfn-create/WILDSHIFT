@@ -3,6 +3,7 @@
   "rootNamespace": "Wildshift.Tests",
   "references": [
     "Wildshift.Runtime",
+    "Unity.InputSystem",
     "UnityEngine.TestRunner",
     "UnityEditor.TestRunner"
   ],

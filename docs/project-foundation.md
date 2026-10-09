@@ -82,8 +82,10 @@ Assets/
       Runtime/
         Core/Bootstrap/       Bootstrap entry flow
         Core/Diagnostics/     Development logging utility
+        Player/Input/         Player input reader
         Wildshift.Runtime.asmdef
       Tests/EditMode/         (Wildshift.Tests.EditMode assembly)
+    Data/Input/               PlayerInputActions.inputactions
     Settings/                 BootstrapSettings.asset, WildshiftURP_*.asset,
                               WildshiftRenderer.asset, WildshiftRenderPipelineGlobalSettings.asset
 ProjectSettings/    Player, Graphics, Quality, Build and editor settings
@@ -98,13 +100,15 @@ project's Visible Meta Files and Force Text serialization settings require.
 
 - **Namespace root:** `Wildshift`. Current bootstrap code lives in `Wildshift.Core.Bootstrap` and the
   development logger in `Wildshift.Core.Diagnostics`.
-- **Assemblies:** `Wildshift.Runtime` (runtime code) and `Wildshift.Tests.EditMode` (Editor-only tests,
-  guarded by `UNITY_INCLUDE_TESTS`). Split runtime assemblies when feature code creates a useful dependency
-  boundary; see [`architecture.md`](architecture.md) for namespace, ownership, lifecycle, and dependency rules.
-- **Configuration vs runtime state:** `BootstrapSettings` is authored ScriptableObject configuration;
-  `BootstrapController` owns the bootstrap sequence's runtime state.
+- **Assemblies:** `Wildshift.Runtime` (runtime code, referencing `Unity.InputSystem`) and
+  `Wildshift.Tests.EditMode` (Editor-only tests, guarded by `UNITY_INCLUDE_TESTS`). Split runtime assemblies
+  when feature code creates a useful dependency boundary; see [`architecture.md`](architecture.md) for
+  namespace, ownership, lifecycle, and dependency rules.
+- **Configuration vs runtime state:** `BootstrapSettings` and `PlayerInputActions.inputactions` are authored
+  configuration. `BootstrapController` owns the bootstrap sequence's runtime state; `PlayerInputReader` owns
+  a per-instance runtime copy of the input action asset and exposes input without applying gameplay behavior.
 
-### Bootstrap (the only gameplay-adjacent code)
+### Bootstrap and player input foundations
 
 `BootstrapController` is the application entry point. On `Start` it:
 
@@ -114,6 +118,14 @@ project's Visible Meta Files and Force Text serialization settings require.
 4. On any failure, sets `Phase = Failed`, records `FailureReason`, and logs an error through `WildshiftLog`.
 
 It does not implement any gameplay.
+
+### Player input (input-only)
+
+The configured `Gameplay` map is authored in `Assets/_Project/Data/Input/PlayerInputActions.inputactions`. It
+contains Vector2 Move and Look actions and ten button actions, with keyboard/mouse defaults documented in
+[`player-input.md`](player-input.md). `Wildshift.Player.Input.PlayerInputReader` enables and disables the map
+with its Unity lifecycle and exposes values and press/release notifications. It does not require a character
+or change the Prototype scene; no movement, camera, combat, interaction, or UI behavior is included.
 
 ## 7. Scenes
 
@@ -156,6 +168,7 @@ Unity 6000.3.24f1 installed.
 | 3 | Enter and exit Play Mode | **Not run in Editor.** |
 | 4 | No compilation errors | **Not run in Editor.** C# files parse without syntax errors (tree-sitter C# grammar, 0 errors). Semantic compilation still needs Unity. |
 | 5 | No missing package dependencies | **Not run in Editor.** Package versions were checked against Unity's 6000.3 branch. Every external GUID in the project's URP, Shader Graph and project-settings files was checked against the URP 17.3.0 and Shader Graph sources. |
+| 6 | Player input action tests | **Not run in Editor.** The Edit Mode suite now simulates keyboard state events to check Vector2 movement, button press/release, and gameplay-input gating. |
 
 Static checks completed in the sandbox:
 
@@ -177,6 +190,9 @@ The Edit Mode suite (`Wildshift.Tests.EditMode`) checks that:
 - `BootstrapSettings` defaults to `Prototype`.
 - Build Settings list `Bootstrap` first and `Prototype` second, both enabled.
 - The configured target scene is enabled in Build Settings.
+- `PlayerInputReaderTests` verifies keyboard movement as a Vector2, stable Jump press/release transitions,
+  and input suppression / held-button clearing when the gameplay map is disabled.
 
-Manual check: open `Bootstrap`, press Play, and confirm the console shows no errors and the game
-moves into `Prototype`. Then open `Prototype` alone and press Play.
+The input-only foundation and its bindings are also described in [`player-input.md`](player-input.md).
+Manual check: open `Bootstrap`, press Play, and confirm the console shows no errors and the game moves into
+`Prototype`. Then open `Prototype` alone and press Play.

@@ -1,7 +1,9 @@
 {
   "name": "Wildshift.Runtime",
   "rootNamespace": "Wildshift",
-  "references": [],
+  "references": [
+    "Unity.InputSystem"
+  ],
   "includePlatforms": [],
   "excludePlatforms": [],
   "allowUnsafeCode": false,
