@@ -24,8 +24,13 @@ split into labelled groups:
 | `NACRE_05_Survey_Installation` | Hut, mast, overhead solar panel, supply crate. |
 | `NACRE_06_Optional_Gully_Route` | Gully path, two gully walls, overlook ramp, overlook ledge, marker stake. |
 | `NACRE_07_Disturbed_Ecology_Site` | Dark soil plot, spoil heap, sample tray, perimeter stakes. |
-| `NACRE_08_Obstacles_and_Boulders` | Central rock block, three boulders, two cargo crates. |
+| `NACRE_08_Props_Alien_Rock_Formations` | Central rock block, three boulders, and the alien rock props (slabs and shards). Renamed from `NACRE_08_Obstacles_and_Boulders`; the cargo crates moved to `NACRE_11`. |
 | `NACRE_09_Region_Lookup` | `WorldRegionLocator_Nacre` with its `WorldRegionVolume_SurveySite` child. |
+| `NACRE_10_Props_Ground_Details` | Shell plates and pebbles. Decorative: no colliders, no shadow casting. |
+| `NACRE_11_Props_Survey_Equipment` | Two cargo crates, three survey cases, and five route marker stakes. |
+
+Groups 08, 10, and 11 hold the environmental props and are documented in
+[`nacre-graybox-props.md`](nacre-graybox-props.md). Groups 00 to 07 and 09 are unchanged.
 
 Coordinates below are **local** to the Nacre root: x runs west to east, z runs south to north, and y is height. The
 world position of a local point is local + (60, 0, 0).
@@ -142,9 +147,13 @@ Repeated elements are prefabs in `Assets/_Project/Prefabs/Nacre/`:
 
 - `NacreRockBlock.prefab`: rock-material cube with a box collider. Used 10 times: four perimeter ridges, two gully walls,
   the central block, and three boulders. Each instance sets its own size and position.
-- `NacreSurveyStake.prefab`: orange accent cube with a box collider. Used 9 times: eight plot stakes and one overlook marker.
+- `NacreSurveyStake.prefab`: orange accent cube with a box collider. Used 14 times: eight plot stakes, one overlook
+  marker, and five route markers added by the prop pass.
+- Five prop prefabs — `NacreRockSlab`, `NacreRockShard`, `NacreShellPlate`, `NacrePebble`, and `NacreSurveyCase` — added
+  by the prop pass. Each bakes in its material, shadow setting, collider, and a default size that already sits correctly
+  on a surface. They are listed in [`nacre-graybox-props.md`](nacre-graybox-props.md).
 
-Ten palette materials are in `Assets/_Project/Materials/Nacre/`. Each is a URP Lit material with one base colour:
+Eleven palette materials are in `Assets/_Project/Materials/Nacre/`. Each is a URP Lit material with one base colour:
 
 | Material | Used for | Colour |
 | --- | --- | --- |
@@ -158,6 +167,7 @@ Ten palette materials are in `Assets/_Project/Materials/Nacre/`. Each is a URP L
 | `NacreSurveyStructure` | Hut, mast, crates, sample tray | off-white |
 | `NacreSurveyAccent` | Beacon, stakes, crossbar | survey orange |
 | `NacreDisturbedSoil` | Soil plot, spoil heap | dark brown-grey |
+| `NacreShellShard` | Shell plate props | pale nacreous grey (0.76, 0.78, 0.80), smoothness 0.4 |
 | `PlayerPlaceholder` | Player capsule (`Assets/_Project/Materials/`) | near-black charcoal |
 
 The interaction validation cube `INTERACTION_TEST_Target` uses `NacreSurveyAccent` (orange), so it stands out from the
@@ -303,6 +313,11 @@ This is a proxy. It does not model the CharacterController's skin, ground probin
 Confirm everything below in the Editor.
 
 ## Verification
+
+> **Counts below predate the prop pass.** The document and collider counts in this section (326 documents, 19 prefab
+> instances, 46 box colliders) were recorded when this region was first blocked out. The scene now holds 438 documents,
+> 55 prefab instances, and 64 Nacre box colliders — the prop pass added 19 colliders and removed none. The current
+> numbers, and the checks that produced them, are in [`nacre-graybox-props.md`](nacre-graybox-props.md).
 
 ### Done in the agent environment (no Unity Editor available)
 
