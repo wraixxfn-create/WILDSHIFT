@@ -37,3 +37,10 @@ The temporary CharacterController player spawns at `(0, 1, -10)`, facing into th
 7. Orbit the camera near walls and obstacles and confirm camera collision pulls the camera inward rather than clipping through geometry.
 
 The layout is intentionally bounded and compact so a complete pass takes less than a minute.
+
+## Relationship to the Nacre graybox region
+
+The Prototype scene also contains the first Nacre region ([`nacre-graybox-region.md`](nacre-graybox-region.md)), offset to
+world `(60, 0, 0)`. The player now spawns at the Nacre start pad, `(47.5, 1.05, -14)`, so the course above is not
+reachable from the default spawn. Nacre's perimeter ridges keep the player inside Nacre. To rerun the checklist above, temporarily
+set the player's spawn back to `(0, 1, -10)`, or use the Scene view. The course geometry itself is unchanged.
