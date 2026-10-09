@@ -25,7 +25,7 @@ namespace Wildshift.Tests
             {
                 if (definition != null)
                 {
-                    Object.DestroyImmediate(definition);
+                    UnityEngine.Object.DestroyImmediate(definition);
                 }
             }
 
