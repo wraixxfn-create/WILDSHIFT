@@ -58,7 +58,7 @@ is disabled, for example by a menu, the reader emits no presses, so no interacti
 | --- | ---: | --- |
 | Single Use | off | When on, only the first successful interaction is accepted. |
 
-The Prototype scene contains one `INTERACTION_TEST_Target` cube, 1 m in front of the spawn point, with repeatable
+The Prototype scene contains one `INTERACTION_TEST_Target` cube, 2 m in front of the Nacre spawn point (world `(47.5, 1, -12)`, see `nacre-graybox-region.md`), with repeatable
 `TestInteractable` behaviour. It is validation scaffolding and should be removed or moved once real interactables exist.
 
 ## Verification
