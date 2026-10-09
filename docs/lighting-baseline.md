@@ -121,8 +121,11 @@ separation is the weakest pairing. It is the main thing to check on screen.
 - No new runtime work. Lighting is static scene data, with no scripts involved.
 - The main light is the only real-time light. Its shadows are the main GPU cost. The High tier uses 2048 with 2 cascades
   and soft filtering. Shadow casting is off for eight flat meshes, which reduces the shadow pass draw calls.
-- About 55 renderers still cast shadows: 36 scene mesh renderers (including the origin movement course, the player,
-  and the taller Nacre objects) and 19 prefab instances (boundary ridges, rocks, and stakes). Count them in the Frame
+- About 74 renderers now cast shadows: the roughly 55 recorded when this baseline was set (36 scene mesh renderers,
+  including the origin movement course, the player, and the taller Nacre objects, plus 19 prefab instances), and 19 more
+  from the environmental prop pass. The other 17 props — the shell plates and pebbles — do not cast, matching the rule
+  above that flat ground detail receives shadows but does not cast them. See
+  [`nacre-graybox-props.md`](nacre-graybox-props.md). Count them in the Frame
   Debugger before deciding that the shadow pass needs trimming.
 - No post-processing, reflection probes, lightmaps, light probes, or additional lights are used. That keeps the baseline
   stable for comparisons.
