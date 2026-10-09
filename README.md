@@ -29,3 +29,4 @@ The player-action event log — serializable `PlayerActionEvent` records, a boun
 [`docs/player-action-events.md`](docs/player-action-events.md). The local save foundation — a versioned
 save model, a safe local save/load service, backup recovery, and development logs — is documented in
 [`docs/local-save-foundation.md`](docs/local-save-foundation.md).
+The world-time foundation — a deterministic, scene-owned `WorldClock` with pause, time scale, manual advancement, and a time-advanced event — is documented in [`docs/world-clock.md`](docs/world-clock.md).
