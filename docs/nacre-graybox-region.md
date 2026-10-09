@@ -166,6 +166,137 @@ Ten palette materials are in `Assets/_Project/Materials/Nacre/`. Each is a URP L
 - Keep the region volume covering the footprint. An object outside it still renders, but it is not in the region.
 - After any change to a region ID or the locator, select `WorldRegionLocator_Nacre` and run **Validate Region Setup**.
 
+## Boundaries, spawn, and traversal rules
+
+This section records the playable footprint, the spawn clearance, each intended route, the tight spots, and the
+height rules that the boundaries and routes depend on. No geometry was changed for this pass: the existing layout
+already satisfies the controller's limits (see *Verification* below). Coordinates are **world** coordinates unless
+marked local.
+
+### Footprint and perimeter
+
+- **Ground slab:** `Ground_Lowland`, 40 × 40 m, world x 40 to 80 and z −20 to 20.
+- **Perimeter:** four `NacreRockBlock` prefab instances, 4 m tall and 1.5 m thick, sitting on the slab edges. Each one
+  is named in the hierarchy under `NACRE_00_Ground_and_Boundary`:
+
+  | Object | World extent (x, z) | Inner face |
+  | --- | --- | --- |
+  | `Boundary_North` | x 40 to 80, z 18.5 to 20 | z 18.5 |
+  | `Boundary_South` | x 40 to 80, z −20 to −18.5 | z −18.5 |
+  | `Boundary_East` | x 78.5 to 80, z −18.5 to 18.5 | x 78.5 |
+  | `Boundary_West` | x 40 to 41.5, z −18.5 to 18.5 | x 41.5 |
+
+- **Intended playable footprint:** the interior of the ridges, world x 41.5 to 78.5 and z −18.5 to 18.5 (local ±18.5).
+  A capsule centre can get to about 0.5 m from each inner face, so the reachable area is about x 42 to 78 and z −18 to 18.
+- The four ridges meet at the corners with no gap, and the ground slab is continuous under them. There is no reachable
+  path to the grid edge in the proxy check (see *Verification*), and no route leaves the footprint.
+- The ridges are **solid rock**, not invisible walls. Nothing invisible is added at the perimeter.
+- The optional gully, the central rock, and the boulders are natural barriers that sit inside the footprint.
+
+### Plateau and cliffs
+
+- The plateau (`Plateau_NorthEast`) is 1.5 m above the ground. Its west edge (x 62) and south edge (z 6) are
+  **cliffs** of 1.5 m. Its north and east edges meet the perimeter ridges. A 1.5 m step is not climbable without a jump,
+  so the only way up is the main ramp.
+- Falling off a cliff is intentional and survivable. The longest drop in the footprint is 1.5 m, onto the ground.
+
+### Spawn
+
+- **Spawn:** world `(47.5, 1.05, −14)`, facing north. The capsule's bottom sits at y 0.05, just above the pad top of
+  0.04, so it settles on the pad.
+- **Floor:** `Start_Pad` is flat (0.04 m above the slab), 7 × 6 m, world x 44 to 51 and z −17 to −11. The spawn is
+  3 m from the south, north, and east edges of the pad, and 3.5 m from the west edge.
+- **Nearest solids:** `INTERACTION_TEST_Target` at 1.5 m (its near face is 1.5 m from the spawn centre), `Start_Beacon`
+  at about 3.3 m, `Boundary_South` at 4.6 m, and `Boundary_West` at 6.1 m. None of these is within the capsule radius.
+- **Known scaffolding:** the interaction test cube sits in front of the spawn, so the straight line north is blocked
+  for about 1 m. The player must step left or right to reach the gully. It is validation scaffolding and can move later.
+
+### Intended routes
+
+Each route below was checked in the proxy (see *Verification*). Checkpoints are world coordinates.
+
+| Route | Expected traversal | Checkpoints (proxy) |
+| --- | --- | --- |
+| **R1, main route** (primary) | Pale strips east along the south leg, north along the north leg, up the 4 m-wide main ramp (14°, 1.5 m rise), then across the plateau to the spire plinth. | Spawn → (60, −13) → (68, −6) → ramp base (68, 0.5) → ramp top (68, 5.8) → plateau (68, 9) → (70, 13) → plinth north strip (73, 17). |
+| **R2, optional gully** | From the start pad north into the lilac gully (3.5 m wide between the west rock and the 1 m gully wall), then up the overlook ramp (about 9°, 0.25 m rise) to the overlook ledge and marker stake. | Spawn → gully mouth (48.75, −8.5) → gully centre (48.75, 0) → overlook ramp (48.75, 9.5) → overlook (48.75, 17). |
+| **R2b, overlook by the ledge** | The 0.25 m overlook ledge can also be stepped onto from the open ground to the east. This is intended and within the 0.3 m step offset. | Overlook reachable with its ramp removed. |
+| **R3, east lowland** | Across the terrace step (0.25 m) and onto the disturbed plot. The plot is walkable soil, but the stakes and spoil heap are solid. | Terrace (56.5, −10.3) → plot (76, −12) → spoil-heap side (77.5, −6). |
+| **R4, survey plateau** | On the plateau, past the hut, supply crate, and mast. The installation is set back from the route. | (65, 14.5) and (65, 16). |
+
+Dead ends. The gully, the overlook, and the east plot all connect back to the central ground, so no route is a
+dead end. The plateau has no other entrance: without `Main_Ramp`, the plateau cells in the proxy are unreachable.
+
+### Elevation and steps
+
+| Feature | Rise | Slope or form | Entry |
+| --- | --- | --- | --- |
+| Main ramp | 1.5 m over 6.2 m | ~14° | Walkable. The only way onto the plateau. |
+| Overlook ramp | 0.25 m over 1.5 m | ~9° | Walkable. The ledge is also steppable. |
+| Overlook ledge | 0.25 m | Step | Within 0.3 m step offset. |
+| Low terrace | 0.25 m | Step | Within 0.3 m step offset. |
+| Route strips, pad, soil, tray | 0.04 to 0.15 m | Step | Within 0.3 m step offset. |
+| Spire plinth | 0.2 m above the plateau | Step | Walkable, but see *Spire plinth* below. |
+| Plateau cliffs | 1.5 m | Vertical | Not climbable. Falling is allowed. |
+
+The largest rise a player can take without a ramp is 0.3 m. The largest height change between two adjacent standable
+cells in the proxy is 0.25 m (the overlook ledge). No surface between the spawn and the spire is steeper than 14°.
+
+### Narrow passages and crevices
+
+- **Narrowest route passage:** the gully, about 3.5 m wide between the faces of its walls (3.6 m clear in the proxy). The capsule needs 1.0 m.
+  The gap between the central rock and the east gully wall is the same width.
+- **Crevices that are not routes.** Each of these is too narrow for the capsule (1.0 m), so it is a dead end. The
+  player will not enter it, and no route should be routed through it:
+
+  | Crevice | Width | Location (world) |
+  | --- | --- | --- |
+  | `Cargo_Crate_A` to `Cargo_Crate_B` | 0.3 m | x 54.6 to 54.9, z 3.1 to 3.6 |
+  | `Survey_Hut` to `Survey_Supply_Crate` | 0.5 m | x 64.8 to 65.3 |
+  | `Boulder_South_West` to `Boundary_South` | 0.4 m | x 53.2 to 54.8, z −18.5 to −18.1 |
+  | `Boulder_South_East` to `Boundary_South` | 0.6 m | x 62.4 to 64.6, z −18.5 to −17.9 |
+  | Disturbed-plot east strip (soil, with stakes) to `Boundary_East` | 0.5 m | x 78.0 to 78.5, z −17 to −3 |
+
+- **Spire plinth.** The monolith is 3 m wide, and the plinth is 4 m wide. That leaves a 0.5 m band, where the plinth can
+  be stood on, at its north edge (z 17.0 to 17.5). The west, south, and east sides are too narrow for the capsule.
+  The plinth is a landmark base, not a platform. The 1.0 m strip between the plinth top and `Boundary_North` is
+  walkable only as an edge, because it has no clearance to spare.
+
+### Falls and out-of-bounds
+
+- No invisible kill plane or catch volume is added. The closed perimeter and continuous ground mean the player can
+  only fall from the plateau cliffs, onto the slab.
+- **Known gap:** nothing recovers a player who is placed outside the footprint, for example by a future save restore or a
+  debug teleport. Gravity has no terminal velocity, so such a player falls indefinitely. The save format stores a
+  position, but no code applies it to the player yet. This should be fixed when positions are restored (see
+  *Known limitations*).
+
+### Editing the boundaries
+
+- Each ridge is a named prefab instance. Select `Boundary_North`, `Boundary_South`, `Boundary_East`, or
+  `Boundary_West` and check the Transform and BoxCollider. Keep the inner faces at local ±18.5.
+- To check the footprint in Scene view, select `Ground_Lowland` (40 × 40 m) and compare it with the ridges.
+- To check traversal, enter Play Mode from the spawn and follow the routes above. The crevices are listed by name
+  so they can be found quickly.
+
+### Verification for this pass
+
+**No Unity Editor is available in this sandbox, so no Play Mode test has been run.** The results below come from a
+proxy built from the scene file. It extracts the 46 box colliders that touch the Nacre footprint, with their world transforms
+(the 16 movement-course objects at the origin are outside it), then models the capsule (radius 0.5 m, height 2 m, step 0.3 m, no jump, unlimited descent) on a 0.1 m grid.
+
+- **Spawn:** the spawn is free and reachable. The nearest solid is 1.5 m away.
+- **Routes:** every checkpoint in the routes table is reachable from the spawn. The optional overlook is reachable
+  with and without its ramp.
+- **Narrowest passage:** the gully is passable at the capsule's radius, with about 1.8 m of clearance on each side of
+  its centreline. The crevices in the table above are not passable.
+- **Largest elevation change:** the main ramp is walkable. The plateau is unreachable when `Main_Ramp` is removed, so
+  the ramp is the only way up. The largest rise between reachable cells is 0.25 m.
+- **Outer perimeter:** no reachable cell lies on the grid edge, and the closest reachable cell is about 0.5 m from a ridge
+  face. The ridges have no gap.
+
+This is a proxy. It does not model the CharacterController's skin, ground probing, sliding, or camera collision.
+Confirm everything below in the Editor.
+
 ## Verification
 
 ### Done in the agent environment (no Unity Editor available)
@@ -222,3 +353,14 @@ Unity is not installed here, so the following checks were run on the generated f
 - **Start facing.** The player starts facing north, as the camera does by default, so the optional gully is straight
   ahead, while the main route begins to the east. The route strips and the spire are the navigation cues.
 - **Movement course is unchanged.** The player controller, camera, input, bootstrap, and region code are untouched.
+- **No out-of-bounds recovery.** A player placed outside the footprint (for example by a future save restore) falls
+  forever, because nothing recovers them. Clamp restored positions to the footprint, or add a respawn, when save
+  restore is wired. A kill zone was not added.
+- **Prompt 14 not run in Play Mode.** The routes, spawn, passages, and perimeter were checked only with the proxy above.
+- **Spire plinth is not a platform.** The monolith fills most of it, so the player can stand only on the north band.
+- **Interaction target blocks the straight line north from the spawn.** It is validation scaffolding and can move.
+- **Crevices are dead ends, not gaps.** If creatures are given navigation, their agent radius must be below
+  the gap widths in the crevice table, or they will get stuck in them.
+- **No jump.** Creatures and the player both need the ramp to reach the plateau, so creature routes must follow the same rules.
+- **Camera near the ridges.** The 4 m ridges are above head height. Confirm that orbit-camera collision keeps the view inside
+  the footprint and does not show the empty space beyond the ridges.
