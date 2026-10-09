@@ -1,4 +1,4 @@
-namespace Wildshift.Bootstrap
+namespace Wildshift.Core.Bootstrap
 {
     /// <summary>Runtime lifecycle phases of the bootstrap sequence.</summary>
     public enum BootstrapPhase

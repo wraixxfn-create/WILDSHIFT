@@ -1,8 +1,9 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using Wildshift.Core.Diagnostics;
 
-namespace Wildshift.Bootstrap
+namespace Wildshift.Core.Bootstrap
 {
     /// <summary>
     /// Application entry point. Validates the bootstrap configuration and hands control
@@ -88,7 +89,7 @@ namespace Wildshift.Bootstrap
         {
             _phase = BootstrapPhase.Failed;
             _failureReason = reason;
-            Debug.LogError($"[Bootstrap] {reason}", this);
+            WildshiftLog.Error($"[Bootstrap] {reason}", this);
         }
     }
 }

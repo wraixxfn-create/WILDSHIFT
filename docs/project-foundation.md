@@ -77,12 +77,15 @@ Assets/
   _Project/
     Art/            Environments/   Prefabs/    UI/
     Audio/          Materials/      Scenes/     VFX/
-    Characters/     Scripts/
-    Data/           Settings/       Tests/
-    Scripts/Runtime/Bootstrap/      (Wildshift.Runtime assembly)
-    Tests/EditMode/                 (Wildshift.Tests.EditMode assembly)
-    Settings/       BootstrapSettings.asset, WildshiftURP_*.asset,
-                    WildshiftRenderer.asset, WildshiftRenderPipelineGlobalSettings.asset
+    Characters/     Data/           Settings/   Tests/
+    Scripts/
+      Runtime/
+        Core/Bootstrap/       Bootstrap entry flow
+        Core/Diagnostics/     Development logging utility
+        Wildshift.Runtime.asmdef
+      Tests/EditMode/         (Wildshift.Tests.EditMode assembly)
+    Settings/                 BootstrapSettings.asset, WildshiftURP_*.asset,
+                              WildshiftRenderer.asset, WildshiftRenderPipelineGlobalSettings.asset
 ProjectSettings/    Player, Graphics, Quality, Build and editor settings
 Packages/           manifest.json
 docs/               This document
@@ -93,15 +96,13 @@ project's Visible Meta Files and Force Text serialization settings require.
 
 ## 6. Code organization
 
-- **Namespace root:** `Wildshift`. Feature namespaces follow folders, for example `Wildshift.Bootstrap`.
-- **Assemblies:** `Wildshift.Runtime` (in `Assets/_Project/Scripts/Runtime`) and `Wildshift.Tests.EditMode`
-  (Editor only, test-only, guarded by `UNITY_INCLUDE_TESTS`). Add a new runtime assembly per feature area
-  once that area has code, so dependencies stay explicit.
-- **Configuration vs runtime state:** designer-authored configuration lives in ScriptableObjects
-  (`BootstrapSettings`). Runtime state lives in plain components (`BootstrapController`). Nothing is
-  stored in static fields.
-- **No singletons, no global managers.** Components receive their dependencies through serialized
-  Inspector references.
+- **Namespace root:** `Wildshift`. Current bootstrap code lives in `Wildshift.Core.Bootstrap` and the
+  development logger in `Wildshift.Core.Diagnostics`.
+- **Assemblies:** `Wildshift.Runtime` (runtime code) and `Wildshift.Tests.EditMode` (Editor-only tests,
+  guarded by `UNITY_INCLUDE_TESTS`). Split runtime assemblies when feature code creates a useful dependency
+  boundary; see [`architecture.md`](architecture.md) for namespace, ownership, lifecycle, and dependency rules.
+- **Configuration vs runtime state:** `BootstrapSettings` is authored ScriptableObject configuration;
+  `BootstrapController` owns the bootstrap sequence's runtime state.
 
 ### Bootstrap (the only gameplay-adjacent code)
 
@@ -110,7 +111,7 @@ project's Visible Meta Files and Force Text serialization settings require.
 1. Reads `BootstrapSettings.TargetSceneName` (default `Prototype`).
 2. Checks that the scene is enabled in Build Settings, using `Application.CanStreamedLevelBeLoaded`.
 3. Loads the target scene in Single mode. Progress is exposed through `LoadProgress`.
-4. On any failure, sets `Phase = Failed`, records `FailureReason`, and logs an error.
+4. On any failure, sets `Phase = Failed`, records `FailureReason`, and logs an error through `WildshiftLog`.
 
 It does not implement any gameplay.
 
