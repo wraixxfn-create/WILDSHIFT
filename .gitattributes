@@ -1,0 +1,22 @@
+# Unity serializes assets as text (Force Text / Visible Meta Files); keep line endings normalized.
+* text=auto
+
+# Binary asset types
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.tga binary
+*.psd binary
+*.exr binary
+*.hdr binary
+*.fbx binary
+*.blend binary
+*.wav binary
+*.mp3 binary
+*.ogg binary
+*.flac binary
+*.ttf binary
+*.otf binary
+*.dll binary
+*.so binary
+*.exe binary
