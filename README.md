@@ -26,4 +26,6 @@ validation-only test target) is documented in [`docs/interaction-framework.md`](
 runtime-state ownership, and extension guidance are documented in [`docs/world-state.md`](docs/world-state.md).
 The player-action event log — serializable `PlayerActionEvent` records, a bounded non-global
 `PlayerActionEventRecorder`, and development-only example events — is documented in
-[`docs/player-action-events.md`](docs/player-action-events.md).
+[`docs/player-action-events.md`](docs/player-action-events.md). The local save foundation — a versioned
+save model, a safe local save/load service, backup recovery, and development logs — is documented in
+[`docs/local-save-foundation.md`](docs/local-save-foundation.md).

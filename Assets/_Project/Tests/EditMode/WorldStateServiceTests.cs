@@ -131,6 +131,37 @@ namespace Wildshift.Tests
             Assert.That(state.TestValue, Is.EqualTo(2));
         }
 
+        [Test]
+        public void GetAllRegionsReturnsEveryRegisteredStateOrderedByStableId()
+        {
+            WorldStateService service = new WorldStateService();
+            Assert.That(service.GetAllRegions(), Is.Empty, "A service with no regions has an empty snapshot.");
+
+            // Registered in an order that is not the sorted order the snapshot must use.
+            Assert.That(service.TryRegisterRegion(CreateDefinition("nacre/coast/north", "North Coast", 1), out string firstError),
+                Is.True, firstError);
+            Assert.That(service.TryRegisterRegion(CreateDefinition("nacre/basin/central", "Central Basin", 2), out string secondError),
+                Is.True, secondError);
+            Assert.That(service.TryRegisterRegion(CreateDefinition("nacre/reef/south", "South Reef", 3), out string thirdError),
+                Is.True, thirdError);
+
+            IReadOnlyList<RegionState> snapshot = service.GetAllRegions();
+            Assert.That(snapshot.Count, Is.EqualTo(3));
+            Assert.That(snapshot[0].StableId, Is.EqualTo("nacre/basin/central"));
+            Assert.That(snapshot[1].StableId, Is.EqualTo("nacre/coast/north"));
+            Assert.That(snapshot[2].StableId, Is.EqualTo("nacre/reef/south"));
+
+            Assert.That(service.TryGetRegion("nacre/coast/north", out RegionState coast, out string getError),
+                Is.True, getError);
+            Assert.That(snapshot[1], Is.SameAs(coast), "The snapshot lists the states the service owns.");
+
+            List<RegionState> mutableSnapshot = new List<RegionState>(snapshot);
+            mutableSnapshot.RemoveAt(0);
+            Assert.That(service.GetAllRegions().Count, Is.EqualTo(3),
+                "Changing a snapshot must not change the registered regions.");
+            Assert.That(service.RegisteredRegionCount, Is.EqualTo(3));
+        }
+
         private RegionDefinition CreateDefinition(string stableId, string displayName, int initialTestValue)
         {
             RegionDefinition definition = ScriptableObject.CreateInstance<RegionDefinition>();
