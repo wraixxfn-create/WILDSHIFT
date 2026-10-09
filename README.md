@@ -15,6 +15,8 @@ for the entry flow, or open `Assets/_Project/Scenes/Prototype.unity` to work on 
 See [`docs/project-foundation.md`](docs/project-foundation.md) for the engine and rendering decisions,
 package list, folder structure, and verification status. See [`docs/architecture.md`](docs/architecture.md)
 for namespace, ownership, lifecycle, and dependency conventions, and [`docs/player-input.md`](docs/player-input.md)
-for the input action map, default bindings, reader API, and verification steps.
-See [`docs/third-person-camera.md`](docs/third-person-camera.md) for the reusable camera,
-neutral prototype scene, Inspector tuning, cursor/menu lifecycle, and camera verification checklist.
+for the input action map, default bindings, reader API, and verification steps. See
+[`docs/player-movement.md`](docs/player-movement.md) for the temporary CharacterController capsule,
+camera-relative movement, sprint tuning, and movement verification. See
+[`docs/third-person-camera.md`](docs/third-person-camera.md) for the reusable camera, prototype scene,
+Inspector tuning, cursor/menu lifecycle, and camera verification checklist.

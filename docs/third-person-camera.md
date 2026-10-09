@@ -1,9 +1,11 @@
 # Third-person camera foundation
 
 `Wildshift.Player.Camera.ThirdPersonCamera` is a reusable component on a Unity Camera. Assign any
-**Target** Transform and the Prompt 3 **PlayerInputReader** in the Inspector. No model, movement,
-combat, or animation component is required. The camera is scene-owned and updates in LateUpdate,
-after target movement. Keep it unparented (or under an unscaled development root).
+**Target** Transform and the Prompt 3 **PlayerInputReader** in the Inspector. The camera owns mouse look,
+orbit, follow, collision, and cursor behavior; it does not implement movement. The separate
+`ThirdPersonPlayerMovement` component reads the camera Transform's horizontal orientation for locomotion.
+The camera is scene-owned and updates in LateUpdate, after target movement. Keep it unparented (or under an
+unscaled development root). See [`player-movement.md`](player-movement.md) for the character controller.
 
 ## Behavior and tuning
 
@@ -51,13 +53,14 @@ relocked. After returning from focus loss, Escape or `ResumeGameplayCursor()` ex
 A menu that disables gameplay input must use its own UI input to close, then re-enable the reader.
 Use only one cursor-owning gameplay camera at a time; turn Capture Cursor off on secondary cameras.
 
-## Neutral development scene
+## Movement prototype scene
 
 Open `Assets/_Project/Scenes/Prototype.unity`, directly or via Bootstrap, and enter Play Mode.
-The scene contains a grey capsule, floor, wall, block, neutral directional light, the input reader,
-and the configured Main Camera. No movement controller, UI, post-processing, shake, lock-on,
-or cinematic effects were added. Move the capsule's Transform in the Inspector while playing to
-exercise follow; WASD deliberately does not move it in this camera-only task.
+The scene contains the capsule placeholder with a `CharacterController` and separate movement component,
+a floor, wall, block, 15-degree ramp, neutral directional light, the input reader, and the configured Main
+Camera. WASD/arrow keys now move the capsule and Left Shift sprints; mouse look continues to control only the
+camera. No UI, post-processing, shake, lock-on, or cinematic effects were added. See
+[`player-movement.md`](player-movement.md) for movement tuning and its verification checklist.
 
 ## Verification
 
