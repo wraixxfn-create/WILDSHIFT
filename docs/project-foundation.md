@@ -1,7 +1,8 @@
 # WILDSHIFT: THE WORLD REMEMBERS — Project Foundation
 
-This document records the decisions and state of the initial Unity project. It covers foundation
-only: no player character, creatures, terrain, combat, AI, quests, inventory, or world simulation exist yet.
+This document records the decisions and state of the Unity project foundation. It includes only a temporary
+capsule for basic movement and neutral test geometry; there is no final protagonist model, terrain system,
+combat, AI, quests, inventory, or world simulation yet.
 
 ## 1. Summary
 
@@ -83,6 +84,8 @@ Assets/
         Core/Bootstrap/       Bootstrap entry flow
         Core/Diagnostics/     Development logging utility
         Player/Input/         Player input reader
+        Player/Camera/        Third-person camera
+        Player/Movement/      Third-person CharacterController movement
         Wildshift.Runtime.asmdef
       Tests/EditMode/         (Wildshift.Tests.EditMode assembly)
     Data/Input/               PlayerInputActions.inputactions
@@ -107,8 +110,9 @@ project's Visible Meta Files and Force Text serialization settings require.
 - **Configuration vs runtime state:** `BootstrapSettings` and `PlayerInputActions.inputactions` are authored
   configuration. `BootstrapController` owns the bootstrap sequence's runtime state; `PlayerInputReader` owns
   a per-instance runtime copy of the input action asset and exposes input without applying gameplay behavior.
+  `ThirdPersonPlayerMovement` owns the temporary character's runtime horizontal/vertical movement state.
 
-### Bootstrap and player input foundations
+### Bootstrap and player foundations
 
 `BootstrapController` is the application entry point. On `Start` it:
 
@@ -119,20 +123,23 @@ project's Visible Meta Files and Force Text serialization settings require.
 
 It does not implement any gameplay.
 
-### Player input (input-only)
+### Player input, movement, and camera
 
 The configured `Gameplay` map is authored in `Assets/_Project/Data/Input/PlayerInputActions.inputactions`. It
 contains Vector2 Move and Look actions and ten button actions, with keyboard/mouse defaults documented in
 [`player-input.md`](player-input.md). `Wildshift.Player.Input.PlayerInputReader` enables and disables the map
-with its Unity lifecycle and exposes values and press/release notifications. It does not require a character
-or change the Prototype scene; no movement, camera, combat, interaction, or UI behavior is included.
+with its Unity lifecycle and exposes values and press/release notifications without implementing gameplay.
+In the Prototype scene, `Wildshift.Player.Movement.ThirdPersonPlayerMovement` consumes Move and Sprint for
+basic CharacterController locomotion, while `Wildshift.Player.Camera.ThirdPersonCamera` consumes Look and
+follows the placeholder transform. Movement and camera responsibilities stay separate; see
+[`player-movement.md`](player-movement.md) and [`third-person-camera.md`](third-person-camera.md).
 
 ## 7. Scenes
 
 | Scene | Build index | Contents | Standalone use |
 | --- | --- | --- | --- |
 | `Assets/_Project/Scenes/Bootstrap.unity` | 0 | Main Camera, `Bootstrap` object with `BootstrapController`. | Press Play to run the entry flow into `Prototype`. |
-| `Assets/_Project/Scenes/Prototype.unity` | 1 | Main Camera, Directional Light. Empty development scene. | Open and press Play on its own. It has no dependency on Bootstrap. |
+| `Assets/_Project/Scenes/Prototype.unity` | 1 | Camera, input reader, capsule placeholder with CharacterController and third-person movement, floor, wall, block, and a 15-degree slope. | Open and press Play on its own; use WASD/arrows, Left Shift, and mouse look to verify movement. It has no dependency on Bootstrap. |
 
 To test the entry flow, press Play in `Bootstrap`. To work on prototypes, open `Prototype` directly.
 
@@ -168,7 +175,7 @@ Unity 6000.3.24f1 installed.
 | 3 | Enter and exit Play Mode | **Not run in Editor.** |
 | 4 | No compilation errors | **Not run in Editor.** C# files parse without syntax errors (tree-sitter C# grammar, 0 errors). Semantic compilation still needs Unity. |
 | 5 | No missing package dependencies | **Not run in Editor.** Package versions were checked against Unity's 6000.3 branch. Every external GUID in the project's URP, Shader Graph and project-settings files was checked against the URP 17.3.0 and Shader Graph sources. |
-| 6 | Player input action tests | **Not run in Editor.** The Edit Mode suite now simulates keyboard state events to check Vector2 movement, button press/release, and gameplay-input gating. |
+| 6 | Player input and movement tests | **Not run in Editor.** The Edit Mode suites simulate keyboard state events for Move, Sprint transitions, button press/release, gameplay-input gating, CharacterController collisions, slopes, and grounding. |
 
 Static checks completed in the sandbox:
 
@@ -192,7 +199,10 @@ The Edit Mode suite (`Wildshift.Tests.EditMode`) checks that:
 - The configured target scene is enabled in Build Settings.
 - `PlayerInputReaderTests` verifies keyboard movement as a Vector2, stable Jump press/release transitions,
   and input suppression / held-button clearing when the gameplay map is disabled.
+- `ThirdPersonPlayerMovementTests` covers all four directions, diagonal speed, camera pitch independence,
+  acceleration/rotation, Sprint transitions, input-loss stopping, wall collision, slope traversal, and grounding.
 
-The input-only foundation and its bindings are also described in [`player-input.md`](player-input.md).
+Input bindings and movement verification are described in [`player-input.md`](player-input.md) and
+[`player-movement.md`](player-movement.md).
 Manual check: open `Bootstrap`, press Play, and confirm the console shows no errors and the game moves into
 `Prototype`. Then open `Prototype` alone and press Play.

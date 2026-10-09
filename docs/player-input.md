@@ -1,8 +1,9 @@
 # WILDSHIFT Player Input Foundation
 
-This is an input-only foundation for keyboard and mouse. It does not move a character, drive a camera,
-execute combat or interaction behavior, or present UI. The project uses the configured Input System
-package (`com.unity.inputsystem` 1.19.0).
+This document describes the behavior-free input reader for keyboard and mouse. The reader only exposes
+input state; the separate third-person camera and movement components consume that state without moving
+input responsibilities into the reader. It does not execute combat or interaction behavior or present UI.
+The project uses the configured Input System package (`com.unity.inputsystem` 1.19.0).
 
 ## Action asset
 
@@ -31,8 +32,8 @@ Input Manager polling, leaving the binding layer open to additional devices late
 
 ## Runtime reader
 
-`Wildshift.Player.Input.PlayerInputReader` is a small, behavior-free `MonoBehaviour`. Add it to a future
-player-owned object and assign `PlayerInputActions.inputactions` to its **Input Actions** field. It expects
+`Wildshift.Player.Input.PlayerInputReader` is a small, behavior-free `MonoBehaviour`. Add it to a player-owned
+object and assign `PlayerInputActions.inputactions` to its **Input Actions** field. It expects
 a `Gameplay` map with all 12 actions above and validates the action names, action types, and expected
 control types at initialization. Missing or mismatched configuration is reported to the Console with the
 component as context; the Gameplay map stays disabled rather than partially enabling an invalid configuration.
@@ -57,7 +58,8 @@ The Edit Mode tests under `Assets/_Project/Tests/EditMode/PlayerInputReaderTests
 asset, add a virtual keyboard, and send keyboard state events through the Input System. They verify that
 W+D produces a non-zero Vector2 Move value (with a normalized diagonal), release returns Move to zero,
 Jump produces one press and one release, and disabling gameplay input suppresses reads while clearing a
-held button.
+held button. `ThirdPersonPlayerMovementTests.cs` separately verifies that movement consumes Move and Sprint,
+clamps diagonal speed, and stops when gameplay input is disabled; see [`player-movement.md`](player-movement.md).
 
 Run the suite in Unity 6000.3.24f1 with:
 
