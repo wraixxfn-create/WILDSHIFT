@@ -24,3 +24,6 @@ movement course and its rapid play-mode checklist are documented in
 [`docs/graybox-movement-test.md`](docs/graybox-movement-test.md). The basic interaction framework (`IInteractable`, aim detection, and the
 validation-only test target) is documented in [`docs/interaction-framework.md`](docs/interaction-framework.md). The initial region identity,
 runtime-state ownership, and extension guidance are documented in [`docs/world-state.md`](docs/world-state.md).
+The player-action event log — serializable `PlayerActionEvent` records, a bounded non-global
+`PlayerActionEventRecorder`, and development-only example events — is documented in
+[`docs/player-action-events.md`](docs/player-action-events.md).
