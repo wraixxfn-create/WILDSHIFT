@@ -3,7 +3,8 @@
 This is the first playable blockout of Nacre, built in `Assets/_Project/Scenes/Prototype.unity`. It is a remote frontier
 survey site: a safe landing pad, one main route with a ramp onto a plateau, an optional gully route, a violet landmark
 that is visible from the start, a human-made survey installation, and a disturbed ecology plot. It is **graybox**: primitives
-and flat palette colours only, with no final art, lighting pass, enemies, missions, dialogue, or hazards.
+and flat palette colours only, with no final art, enemies, missions, dialogue, or hazards. Its baseline lighting (sun,
+ambient, background, shadow casting) is set in the scene and documented in [`lighting-baseline.md`](lighting-baseline.md).
 
 Region identity: `nacre/frontier/survey-site`. The region system it uses is documented in [`world-regions.md`](world-regions.md).
 
@@ -147,16 +148,20 @@ Ten palette materials are in `Assets/_Project/Materials/Nacre/`. Each is a URP L
 
 | Material | Used for | Colour |
 | --- | --- | --- |
-| `NacrePearlGround` | Ground | pale pearl grey |
+| `NacrePearlGround` | Ground | mid pearl grey (0.46, 0.46, 0.49) |
 | `NacreStartPad` | Start pad (safe) | mint grey |
 | `NacreRoutePath` | Main route strips | pale sand |
 | `NacreOptionalPath` | Optional gully path | dusky lilac |
-| `NacrePlateauSurface` | Plateau, ramp, ledge, terrace, plinth | warm light grey |
+| `NacrePlateauSurface` | Plateau, ramp, ledge, terrace, plinth | warm mid grey (0.62, 0.60, 0.59) |
 | `NacreRock` | Ridges, rocks, panel | slate teal |
 | `NacreLandmark` | Spire | pearl violet |
 | `NacreSurveyStructure` | Hut, mast, crates, sample tray | off-white |
 | `NacreSurveyAccent` | Beacon, stakes, crossbar | survey orange |
 | `NacreDisturbedSoil` | Soil plot, spoil heap | dark brown-grey |
+| `PlayerPlaceholder` | Player capsule (`Assets/_Project/Materials/`) | near-black charcoal |
+
+The interaction validation cube `INTERACTION_TEST_Target` uses `NacreSurveyAccent` (orange), so it stands out from the
+ground. The movement course at the origin keeps `DevelopmentNeutral` and `GrayboxWall`/`GrayboxObstacle`.
 
 ## Editing the layout
 
@@ -336,7 +341,7 @@ Unity is not installed here, so the following checks were run on the generated f
 
 - **Not yet run in Unity.** The scene and assets were written as text and checked as described above. Open the scene
   once in the Editor and run the checklist before relying on it. Unity may re-serialise the file on first save.
-- **Graybox only.** No textures, no lighting or fog tuning beyond the Prototype scene's existing settings, and no
+- **Graybox only.** No textures and no fog. The baseline lighting is documented in [`lighting-baseline.md`](lighting-baseline.md), and no
   atmosphere. The palette is a provisional colour grid.
 - **Elevation is ramp- or step-based only.** There is no jump, so a height change above 0.3 m must have a ramp.
 - **The overlook can also be reached by stepping up its 0.25 m edge** without its ramp. This is within the step offset, so
