@@ -1,8 +1,8 @@
 # WILDSHIFT: THE WORLD REMEMBERS — Project Foundation
 
-This document records the decisions and state of the Unity project foundation. It includes only a temporary
-capsule for basic movement and neutral test geometry; there is no final protagonist model, terrain system,
-combat, AI, quests, inventory, or world simulation yet.
+This document records the decisions and state of the Unity project foundation. It includes a temporary capsule
+for basic movement, neutral test geometry, and an in-memory region identity/runtime-state foundation. There is no
+final protagonist model, terrain system, combat, AI, quests, inventory, or world simulation yet.
 
 ## 1. Summary
 
@@ -86,8 +86,9 @@ Assets/
         Player/Input/         Player input reader
         Player/Camera/        Third-person camera
         Player/Movement/      Third-person CharacterController movement
+        World/                 Region identity, runtime state, and service
         Wildshift.Runtime.asmdef
-      Tests/EditMode/         (Wildshift.Tests.EditMode assembly)
+      Tests/EditMode/         (Wildshift.Tests.EditMode assembly, including world-state tests)
     Data/Input/               PlayerInputActions.inputactions
     Settings/                 BootstrapSettings.asset, WildshiftURP_*.asset,
                               WildshiftRenderer.asset, WildshiftRenderPipelineGlobalSettings.asset
@@ -107,10 +108,12 @@ project's Visible Meta Files and Force Text serialization settings require.
   `Wildshift.Tests.EditMode` (Editor-only tests, guarded by `UNITY_INCLUDE_TESTS`). Split runtime assemblies
   when feature code creates a useful dependency boundary; see [`architecture.md`](architecture.md) for
   namespace, ownership, lifecycle, and dependency rules.
-- **Configuration vs runtime state:** `BootstrapSettings` and `PlayerInputActions.inputactions` are authored
-  configuration. `BootstrapController` owns the bootstrap sequence's runtime state; `PlayerInputReader` owns
-  a per-instance runtime copy of the input action asset and exposes input without applying gameplay behavior.
-  `ThirdPersonPlayerMovement` owns the temporary character's runtime horizontal/vertical movement state.
+- **Configuration vs runtime state:** `BootstrapSettings`, `PlayerInputActions.inputactions`, and
+  `RegionDefinition` assets are authored configuration. `BootstrapController` owns the bootstrap sequence's
+  runtime state; `PlayerInputReader` owns a per-instance runtime copy of the input action asset and exposes input
+  without applying gameplay behavior. `ThirdPersonPlayerMovement` owns the temporary character's runtime
+  horizontal/vertical movement state. Each `WorldStateService` owns freshly created, serializable `RegionState`
+  objects; changing a region's test value never changes its shared `RegionDefinition` asset.
 
 ### Bootstrap and player foundations
 
@@ -133,6 +136,15 @@ In the Prototype scene, `Wildshift.Player.Movement.ThirdPersonPlayerMovement` co
 basic CharacterController locomotion, while `Wildshift.Player.Camera.ThirdPersonCamera` consumes Look and
 follows the placeholder transform. Movement and camera responsibilities stay separate; see
 [`player-movement.md`](player-movement.md) and [`third-person-camera.md`](third-person-camera.md).
+
+### World-state foundation
+
+`Wildshift.World.RegionDefinition` is the authored source for a region's stable ID, optional display label, and
+foundation-only initial test value. `WorldStateService` registers a fresh `RegionState` for each definition and
+looks it up by stable ID; it is an explicitly owned C# service, not a singleton or scene scanner. The serializable
+runtime state currently contains only identity/display data and a test integer. It does not implement ecology,
+settlement or faction behavior, environmental transformations, world events, or save/load. See
+[`world-state.md`](world-state.md) for the registration contract, tests, and future extension guidance.
 
 ## 7. Scenes
 
@@ -176,6 +188,7 @@ Unity 6000.3.24f1 installed.
 | 4 | No compilation errors | **Not run in Editor.** C# files parse without syntax errors (tree-sitter C# grammar, 0 errors). Semantic compilation still needs Unity. |
 | 5 | No missing package dependencies | **Not run in Editor.** Package versions were checked against Unity's 6000.3 branch. Every external GUID in the project's URP, Shader Graph and project-settings files was checked against the URP 17.3.0 and Shader Graph sources. |
 | 6 | Player input and movement tests | **Not run in Editor.** The Edit Mode suites simulate keyboard state events for Move, Sprint transitions, button press/release, gameplay-input gating, CharacterController collisions, slopes, and grounding. |
+| 7 | World-state data tests | **Not run in Editor.** `WorldStateServiceTests` covers registration, stable-ID retrieval, updates, unknown-ID errors, duplicate IDs, and region/session state isolation. |
 
 Static checks completed in the sandbox:
 
@@ -201,8 +214,11 @@ The Edit Mode suite (`Wildshift.Tests.EditMode`) checks that:
   and input suppression / held-button clearing when the gameplay map is disabled.
 - `ThirdPersonPlayerMovementTests` covers all four directions, diagonal speed, camera pitch independence,
   acceleration/rotation, Sprint transitions, input-loss stopping, wall collision, slope traversal, and grounding.
+- `WorldStateServiceTests` verifies region registration and retrieval by stable ID, runtime test-value updates,
+  unknown/duplicate ID errors, and that different regions and service instances do not share mutable state.
 
 Input bindings and movement verification are described in [`player-input.md`](player-input.md) and
-[`player-movement.md`](player-movement.md).
+[`player-movement.md`](player-movement.md). World-state scope and future ecology/faction extension guidance are in
+[`world-state.md`](world-state.md).
 Manual check: open `Bootstrap`, press Play, and confirm the console shows no errors and the game moves into
 `Prototype`. Then open `Prototype` alone and press Play.

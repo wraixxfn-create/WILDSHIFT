@@ -22,4 +22,5 @@ camera-relative movement, sprint tuning, and movement verification. See
 Inspector tuning, cursor/menu lifecycle, and camera verification checklist. The temporary `Prototype`
 movement course and its rapid play-mode checklist are documented in
 [`docs/graybox-movement-test.md`](docs/graybox-movement-test.md). The basic interaction framework (`IInteractable`, aim detection, and the
-validation-only test target) is documented in [`docs/interaction-framework.md`](docs/interaction-framework.md).
+validation-only test target) is documented in [`docs/interaction-framework.md`](docs/interaction-framework.md). The initial region identity,
+runtime-state ownership, and extension guidance are documented in [`docs/world-state.md`](docs/world-state.md).
