@@ -16,3 +16,5 @@ See [`docs/project-foundation.md`](docs/project-foundation.md) for the engine an
 package list, folder structure, and verification status. See [`docs/architecture.md`](docs/architecture.md)
 for namespace, ownership, lifecycle, and dependency conventions, and [`docs/player-input.md`](docs/player-input.md)
 for the input action map, default bindings, reader API, and verification steps.
+See [`docs/third-person-camera.md`](docs/third-person-camera.md) for the reusable camera,
+neutral prototype scene, Inspector tuning, cursor/menu lifecycle, and camera verification checklist.

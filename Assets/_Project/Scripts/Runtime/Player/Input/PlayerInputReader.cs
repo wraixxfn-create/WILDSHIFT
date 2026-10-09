@@ -37,6 +37,10 @@ namespace Wildshift.Player.Input
         private Dictionary<InputAction, PlayerInputButton> _buttonActionLookup;
         private bool _gameplayInputAllowed = true;
         private bool _buttonCallbacksSubscribed;
+        private bool _reportedGameplayInputEnabled;
+
+        /// <summary>Raised when the effective Gameplay input availability changes.</summary>
+        public event Action<bool> GameplayInputEnabledChanged;
 
         /// <summary>Raised once when a button action becomes pressed.</summary>
         public event Action<PlayerInputButton> ButtonPressed;
@@ -256,6 +260,7 @@ namespace Wildshift.Player.Input
                     _gameplayMap.Enable();
                 }
 
+                ReportGameplayInputState();
                 return;
             }
 
@@ -270,6 +275,19 @@ namespace Wildshift.Player.Input
             }
 
             ClearPressedButtons();
+            ReportGameplayInputState();
+        }
+
+        private void ReportGameplayInputState()
+        {
+            bool enabled = IsGameplayInputEnabled;
+            if (_reportedGameplayInputEnabled == enabled)
+            {
+                return;
+            }
+
+            _reportedGameplayInputEnabled = enabled;
+            GameplayInputEnabledChanged?.Invoke(enabled);
         }
 
         private void ClearPressedButtons()
