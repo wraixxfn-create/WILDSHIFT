@@ -1,0 +1,40 @@
+# ---- Unity generated folders (never commit) ----
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+[Uu]ser[Ss]ettings/
+MemoryCaptures/
+Recordings/
+
+# ---- Unity generated project files ----
+*.csproj
+*.unityproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+*.tmp
+sysinfo.txt
+
+# ---- Crash / profiler output ----
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# ---- IDE and OS ----
+.vs/
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
