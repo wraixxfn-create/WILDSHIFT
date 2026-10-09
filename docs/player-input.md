@@ -46,7 +46,9 @@ buttons, so listeners do not get stuck if a menu opens mid-press.
 Call `SetGameplayInputEnabled(false)` while a menu should block gameplay input and pass `true` when that
 menu no longer owns input. The reader also enables its action map only while its component is active and
 disables the map when the component is disabled. Each reader owns a runtime copy of the assigned asset,
-so enabling one reader does not mutate the imported asset or another reader. There is no per-frame polling
+so enabling one reader does not mutate the imported asset or another reader. Consumers may subscribe to `GameplayInputEnabledChanged` for effective availability transitions
+(including component disable); repeated requests for the same state do not emit duplicates. The camera
+uses this to restore cursor state synchronously for menus. There is no per-frame polling
 loop or per-frame input allocation in the reader.
 
 ## Verification

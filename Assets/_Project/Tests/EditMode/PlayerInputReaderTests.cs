@@ -130,6 +130,28 @@ namespace Wildshift.Tests
             Assert.That(releaseCount, Is.EqualTo(1));
         }
 
+        [Test]
+        public void GameplayAvailabilityReportsTransitionsWithoutDuplicateNotifications()
+        {
+            int count = 0;
+            bool latest = true;
+            _reader.GameplayInputEnabledChanged += enabled => { count++; latest = enabled; };
+            _reader.SetGameplayInputEnabled(false);
+            Assert.That(count, Is.EqualTo(1));
+            Assert.That(latest, Is.False);
+            _reader.SetGameplayInputEnabled(false);
+            Assert.That(count, Is.EqualTo(1));
+            _reader.SetGameplayInputEnabled(true);
+            Assert.That(count, Is.EqualTo(2));
+            Assert.That(latest, Is.True);
+            _reader.enabled = false;
+            Assert.That(count, Is.EqualTo(3));
+            Assert.That(latest, Is.False);
+            _reader.enabled = true;
+            Assert.That(count, Is.EqualTo(4));
+            Assert.That(latest, Is.True);
+        }
+
         private void QueueKeyboardState(KeyboardState state)
         {
             InputSystem.QueueStateEvent(_keyboard, state);
