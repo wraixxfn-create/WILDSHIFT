@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace Wildshift.Bootstrap
+namespace Wildshift.Core.Bootstrap
 {
     /// <summary>
     /// Designer-authored configuration for the bootstrap sequence.

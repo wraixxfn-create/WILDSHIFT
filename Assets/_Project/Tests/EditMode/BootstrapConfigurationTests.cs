@@ -2,7 +2,7 @@ using System.IO;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
-using Wildshift.Bootstrap;
+using Wildshift.Core.Bootstrap;
 
 namespace Wildshift.Tests
 {

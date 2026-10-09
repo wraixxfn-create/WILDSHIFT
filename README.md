@@ -13,4 +13,5 @@ Open the repository root in Unity Hub with **6000.3.24f1**. Start from `Assets/_
 for the entry flow, or open `Assets/_Project/Scenes/Prototype.unity` to work on prototypes directly.
 
 See [`docs/project-foundation.md`](docs/project-foundation.md) for the engine and rendering decisions,
-package list, folder structure, and verification status.
+package list, folder structure, and verification status. See [`docs/architecture.md`](docs/architecture.md)
+for namespace, ownership, lifecycle, and dependency conventions.
