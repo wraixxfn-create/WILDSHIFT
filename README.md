@@ -14,4 +14,5 @@ for the entry flow, or open `Assets/_Project/Scenes/Prototype.unity` to work on 
 
 See [`docs/project-foundation.md`](docs/project-foundation.md) for the engine and rendering decisions,
 package list, folder structure, and verification status. See [`docs/architecture.md`](docs/architecture.md)
-for namespace, ownership, lifecycle, and dependency conventions.
+for namespace, ownership, lifecycle, and dependency conventions, and [`docs/player-input.md`](docs/player-input.md)
+for the input action map, default bindings, reader API, and verification steps.
