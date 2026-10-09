@@ -19,4 +19,6 @@ for the input action map, default bindings, reader API, and verification steps. 
 [`docs/player-movement.md`](docs/player-movement.md) for the temporary CharacterController capsule,
 camera-relative movement, sprint tuning, and movement verification. See
 [`docs/third-person-camera.md`](docs/third-person-camera.md) for the reusable camera, prototype scene,
-Inspector tuning, cursor/menu lifecycle, and camera verification checklist.
+Inspector tuning, cursor/menu lifecycle, and camera verification checklist. The temporary `Prototype`
+movement course and its rapid play-mode checklist are documented in
+[`docs/graybox-movement-test.md`](docs/graybox-movement-test.md).
