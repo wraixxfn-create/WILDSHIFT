@@ -10,7 +10,7 @@ ecology, faction logic, wildlife AI, or environmental transformation in this lay
 | --- | --- | --- |
 | `RegionDefinition` | `Wildshift.World` | Shared ScriptableObject authoring data: a stable ID, optional display label, and starting value for the foundation test. It is read-only at runtime. |
 | `RegionState` | `Wildshift.World` | `[Serializable]` plain C# runtime data created as a fresh copy for one registered region. Currently holds the stable ID, display label, and one foundation-only mutable integer (`TestValue`). |
-| `WorldStateService` | `Wildshift.World` | Non-global in-memory owner of explicitly registered region states. Uses stable IDs for lookup and returns descriptive errors for invalid, duplicate, or unknown IDs. |
+| `WorldStateService` | `Wildshift.World` | Non-global in-memory owner of explicitly registered region states. Uses stable IDs for lookup, enumerates its states in registration order as a snapshot (`GetRegisteredRegions`), and returns descriptive errors for invalid, duplicate, or unknown IDs. |
 
 The stable ID is the identity (`RegionDefinition.StableId` / `RegionState.StableId`); the ScriptableObject name,
 display label, scene name, and GameObject name are not. IDs are compared ordinally and are case-sensitive. Choose
@@ -55,17 +55,20 @@ foundation assigns no scales, rules, or behaviors to these concepts.
 | Human settlement influence | Region-local settlement influence data referencing stable settlement IDs. | Settlement behavior, expansion, or cross-region propagation. |
 | Faction influence | Region-local influence data referencing stable faction IDs. | Faction AI, diplomacy, territory simulation, or faction lifecycle. |
 | Known environmental changes | A region-owned collection of serializable change records once change IDs and provenance are designed. | Applying transformations or simulating their consequences. |
-| Persistent world events | A region-owned collection of durable event records with stable IDs. | Event scheduling, quests, or a save/load implementation. |
+| Persistent world events | A region-owned collection of durable event records with stable IDs. | Event scheduling, quests, or save-format decisions (those belong to `Wildshift.Persistence`). |
 
 When adding collections, initialize a separate collection per `RegionState` and avoid shared mutable defaults. Keep
 references between regions and other systems as stable IDs or serializable values, not scene-object references.
 `RegionState` is marked `[Serializable]` so it can remain a data-transfer boundary, but disk persistence, migration,
-and save-version handling belong to a future `Wildshift.Persistence` feature.
+and save-version handling belong to `Wildshift.Persistence`. That layer saves region state by stable ID through its
+own `RegionSaveData` record rather than serializing `RegionState` itself, so a new runtime field is only persisted
+once persistence adds a matching, validated field; see `local-save-foundation.md`.
 
 ## Tests and verification
 
 `Assets/_Project/Tests/EditMode/WorldStateServiceTests.cs` covers stable-ID registration/retrieval, test-value updates,
-unknown-ID error reporting, duplicate-ID rejection, independence between region IDs, and independence between two
+unknown-ID error reporting, duplicate-ID rejection, deterministic registration-order enumeration via
+`GetRegisteredRegions`, independence between region IDs, and independence between two
 services initialized from the same definition asset. Run it with the project's Edit Mode suite in Unity 6000.3.24f1:
 
 ```bash
