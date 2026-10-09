@@ -19,6 +19,7 @@ namespace Wildshift.Player.Input
     public sealed class PlayerInputReader : MonoBehaviour
     {
         private const string GameplayMapName = "Gameplay";
+        private const string DefaultInputActionsPath = "Assets/_Project/Data/Input/PlayerInputActions.inputactions";
         private const string Vector2ControlType = "Vector2";
         private const string ButtonControlType = "Button";
         private const int ButtonCount = (int)PlayerInputButton.Pause + 1;
@@ -86,6 +87,20 @@ namespace Wildshift.Player.Input
             RefreshGameplayInput();
         }
 
+#if UNITY_EDITOR
+        /// <summary>
+        /// Editor-only: when the component is added or reset in the Inspector, assigns the authored
+        /// PlayerInputActions asset if the field is still empty. Runtime code never looks the asset up.
+        /// </summary>
+        private void Reset()
+        {
+            if (_inputActions == null)
+            {
+                _inputActions = UnityEditor.AssetDatabase.LoadAssetAtPath<InputActionAsset>(DefaultInputActionsPath);
+            }
+        }
+#endif
+
         private void Awake()
         {
             TryInitializeActions();
@@ -114,7 +129,8 @@ namespace Wildshift.Player.Input
             {
                 WildshiftLog.Error(
                     $"{nameof(PlayerInputReader)} on '{name}' has no Input Action Asset assigned. " +
-                    $"Assign an asset with a '{GameplayMapName}' map containing Move, Look, and all button actions.",
+                    $"Assign '{DefaultInputActionsPath}' to its Input Actions field. " +
+                    $"Any other asset needs a '{GameplayMapName}' map containing Move, Look, and all button actions.",
                     this);
                 return false;
             }
