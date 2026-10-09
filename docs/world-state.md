@@ -10,7 +10,7 @@ ecology, faction logic, wildlife AI, or environmental transformation in this lay
 | --- | --- | --- |
 | `RegionDefinition` | `Wildshift.World` | Shared ScriptableObject authoring data: a stable ID, optional display label, and starting value for the foundation test. It is read-only at runtime. |
 | `RegionState` | `Wildshift.World` | `[Serializable]` plain C# runtime data created as a fresh copy for one registered region. Currently holds the stable ID, display label, and one foundation-only mutable integer (`TestValue`). |
-| `WorldStateService` | `Wildshift.World` | Non-global in-memory owner of explicitly registered region states. Uses stable IDs for lookup and returns descriptive errors for invalid, duplicate, or unknown IDs. |
+| `WorldStateService` | `Wildshift.World` | Non-global in-memory owner of explicitly registered region states. Uses stable IDs for lookup, exposes an ordered snapshot of every registered state for callers such as persistence, and returns descriptive errors for invalid, duplicate, or unknown IDs. |
 
 The stable ID is the identity (`RegionDefinition.StableId` / `RegionState.StableId`); the ScriptableObject name,
 display label, scene name, and GameObject name are not. IDs are compared ordinally and are case-sensitive. Choose
@@ -39,7 +39,10 @@ if (worldState.TryGetRegion("nacre/coast/north", out RegionState region, out err
 ```
 
 `TryGetRegion` and `TryUpdateTestValue` return `false` and a descriptive `error` for an unknown ID instead of
-throwing. The service deliberately does not log on the caller's behalf: callers decide whether and where to surface
+throwing. `GetAllRegions` returns a snapshot list of every registered state ordered by stable ID (ordinal), so a
+caller such as persistence produces the same output for the same state; the list is a copy, but the states inside it
+are still owned by the service. The service deliberately does not log on the caller's behalf: callers decide whether
+and where to surface
 the returned error. Duplicate IDs and definitions with blank IDs are also rejected without replacing existing data.
 `TestValue` exists only to exercise registration and mutation; it has no gameplay or ecological meaning.
 
@@ -55,18 +58,22 @@ foundation assigns no scales, rules, or behaviors to these concepts.
 | Human settlement influence | Region-local settlement influence data referencing stable settlement IDs. | Settlement behavior, expansion, or cross-region propagation. |
 | Faction influence | Region-local influence data referencing stable faction IDs. | Faction AI, diplomacy, territory simulation, or faction lifecycle. |
 | Known environmental changes | A region-owned collection of serializable change records once change IDs and provenance are designed. | Applying transformations or simulating their consequences. |
-| Persistent world events | A region-owned collection of durable event records with stable IDs. | Event scheduling, quests, or a save/load implementation. |
+| Persistent world events | A region-owned collection of durable event records with stable IDs. | Event scheduling or quests. A save/load foundation for the current data exists in `Wildshift.Persistence`; see [`local-save-foundation.md`](local-save-foundation.md). |
 
 When adding collections, initialize a separate collection per `RegionState` and avoid shared mutable defaults. Keep
 references between regions and other systems as stable IDs or serializable values, not scene-object references.
-`RegionState` is marked `[Serializable]` so it can remain a data-transfer boundary, but disk persistence, migration,
-and save-version handling belong to a future `Wildshift.Persistence` feature.
+`RegionState` is marked `[Serializable]` so it can remain a data-transfer boundary. Disk persistence now exists for
+the foundation test value only: `Wildshift.Persistence` captures registered regions by stable ID into a versioned
+save and applies them back through `TryUpdateTestValue`, so authored data in a `RegionDefinition` asset is never
+saved or overwritten; see [`local-save-foundation.md`](local-save-foundation.md). Migration and richer region data
+belong to that layer as those systems define their data contracts.
 
 ## Tests and verification
 
 `Assets/_Project/Tests/EditMode/WorldStateServiceTests.cs` covers stable-ID registration/retrieval, test-value updates,
-unknown-ID error reporting, duplicate-ID rejection, independence between region IDs, and independence between two
-services initialized from the same definition asset. Run it with the project's Edit Mode suite in Unity 6000.3.24f1:
+unknown-ID error reporting, duplicate-ID rejection, independence between region IDs, the ordered `GetAllRegions`
+snapshot used by persistence, and independence between two services initialized from the same definition asset. Run it
+with the project's Edit Mode suite in Unity 6000.3.24f1:
 
 ```bash
 Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode \

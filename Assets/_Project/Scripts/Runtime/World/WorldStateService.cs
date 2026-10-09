@@ -71,6 +71,23 @@ namespace Wildshift.World
         }
 
         /// <summary>
+        /// Returns a snapshot list of every registered region state, ordered by stable ID so callers
+        /// such as persistence produce the same output for the same state. The list itself is a copy;
+        /// the states inside it are still owned by this service and must not be shared between sessions.
+        /// </summary>
+        public IReadOnlyList<RegionState> GetAllRegions()
+        {
+            List<RegionState> snapshot = new List<RegionState>(_regions.Count);
+            foreach (KeyValuePair<string, RegionState> registered in _regions)
+            {
+                snapshot.Add(registered.Value);
+            }
+
+            snapshot.Sort((left, right) => string.CompareOrdinal(left.StableId, right.StableId));
+            return snapshot;
+        }
+
+        /// <summary>
         /// Updates the foundation-only test value on a registered region.
         /// Returns false with an error message if the region is unknown.
         /// </summary>
