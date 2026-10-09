@@ -99,6 +99,26 @@ namespace Wildshift.Tests
         }
 
         [Test]
+        public void RegisteredRegionsAreEnumeratedInRegistrationOrderAsASnapshot()
+        {
+            RegionDefinition first = CreateDefinition("nacre/coast/north", "North Coast", 1);
+            RegionDefinition second = CreateDefinition("nacre/reef/south", "South Reef", 2);
+            RegionDefinition third = CreateDefinition("nacre/valley/west", "West Valley", 3);
+            WorldStateService service = new WorldStateService();
+            Assert.That(service.TryRegisterRegion(first, out string firstError), Is.True, firstError);
+            Assert.That(service.TryRegisterRegion(second, out string secondError), Is.True, secondError);
+
+            IReadOnlyList<RegionState> snapshot = service.GetRegisteredRegions();
+            Assert.That(snapshot.Count, Is.EqualTo(2));
+            Assert.That(snapshot[0].StableId, Is.EqualTo("nacre/coast/north"));
+            Assert.That(snapshot[1].StableId, Is.EqualTo("nacre/reef/south"));
+
+            Assert.That(service.TryRegisterRegion(third, out string thirdError), Is.True, thirdError);
+            Assert.That(snapshot.Count, Is.EqualTo(2), "An earlier snapshot must not change when a region is added.");
+            Assert.That(service.GetRegisteredRegions().Count, Is.EqualTo(3));
+        }
+
+        [Test]
         public void UnknownRegionReturnsAnErrorWithoutThrowing()
         {
             WorldStateService service = new WorldStateService();

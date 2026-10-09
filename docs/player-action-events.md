@@ -119,6 +119,6 @@ Unity Editor.
 | Future concern | Possible addition | Keep out of this foundation for now |
 | --- | --- | --- |
 | Reacting systems (ecology, factions, adaptive world) | Read-only consumers that query the log on their own cadence from a composition boundary. | Automatic reactions, ecosystem changes, faction strengthening, or any write into world state triggered by this layer. |
-| Persistence | Durable snapshots of retained events with format/versioning in `Wildshift.Persistence`; a cross-session ID scheme if records leave the log. | Save/load code, cloud services, or analytics. |
+| Persistence | Implemented for the prototype: `Wildshift.Persistence` saves a limited, chronological slice of the retained log and restores it into a fresh recorder (see `local-save-foundation.md`). A cross-session ID scheme is still open if records must outlive one log. | Cloud services, analytics, or persistence logic inside this layer. |
 | Region-owned history | `RegionState` collections that reference stable event IDs recorded here (see `world-state.md`). | Duplicating the log per region or coupling the recorder to `WorldStateService`. |
 | New event vocabulary | New `PlayerActionEventType` values or parameter IDs when a reacting system defines the term. | Speculative event types, stringly typed kinds, or free-form payloads. |

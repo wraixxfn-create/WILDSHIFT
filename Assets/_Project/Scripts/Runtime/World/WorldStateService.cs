@@ -13,8 +13,22 @@ namespace Wildshift.World
         private readonly Dictionary<string, RegionState> _regions =
             new Dictionary<string, RegionState>(StringComparer.Ordinal);
 
+        // Registration order is kept so enumeration (for example by persistence) is deterministic;
+        // dictionary order is not part of this service's contract.
+        private readonly List<RegionState> _registrationOrder = new List<RegionState>();
+
         /// <summary>Number of regions explicitly registered with this service.</summary>
         public int RegisteredRegionCount => _regions.Count;
+
+        /// <summary>
+        /// Returns the registered region states in registration order. The returned list is a
+        /// snapshot — registering afterwards does not change it — but the <see cref="RegionState"/>
+        /// objects in it are the live, service-owned states, not copies.
+        /// </summary>
+        public IReadOnlyList<RegionState> GetRegisteredRegions()
+        {
+            return new List<RegionState>(_registrationOrder);
+        }
 
         /// <summary>
         /// Creates a fresh runtime state from an authored region definition.
@@ -42,7 +56,9 @@ namespace Wildshift.World
             }
 
             // RegionState is a new object per registration. Never attach changing values to the shared asset.
-            _regions.Add(stableId, definition.CreateInitialState());
+            RegionState state = definition.CreateInitialState();
+            _regions.Add(stableId, state);
+            _registrationOrder.Add(state);
             error = null;
             return true;
         }
