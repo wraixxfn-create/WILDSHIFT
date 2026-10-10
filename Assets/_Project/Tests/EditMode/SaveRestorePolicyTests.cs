@@ -97,7 +97,10 @@ namespace Wildshift.Tests
                 saved, SafePosition, SafeOrientation, MinimumHeight, _ => false);
 
             Assert.That(placement.IsRecovered, Is.False);
-            Assert.That(placement.Orientation.magnitude, Is.EqualTo(1f).Within(1e-5f));
+            Quaternion normalized = placement.Orientation;
+            float squaredMagnitude = normalized.x * normalized.x + normalized.y * normalized.y +
+                                     normalized.z * normalized.z + normalized.w * normalized.w;
+            Assert.That(squaredMagnitude, Is.EqualTo(1f).Within(1e-5f));
         }
 
         [Test]
