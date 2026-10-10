@@ -464,5 +464,47 @@ namespace Wildshift.Tests
             Assert.That(actual.z, Is.EqualTo(expected.z).Within(1e-4f));
             Assert.That(actual.w, Is.EqualTo(expected.w).Within(1e-4f));
         }
-    }
+    
+        [Test]
+        public void SavingOverAnUnusablePrimaryKeepsItUnchangedAndTheLastGoodBackup()
+        {
+            LocalSaveService service = CreateService();
+            SaveTwoGenerations(service);
+            string backupContents = File.ReadAllText(_backupPath);
+
+            const string damaged = "{ damaged before the next save";
+            File.WriteAllText(_savePath, damaged);
+
+            SaveLoadStatus saveStatus = service.TrySave(
+                CreateSampleSave(new Vector3(7f, 8f, 9f), Quaternion.identity), out string saveError);
+            Assert.That(saveStatus, Is.EqualTo(SaveLoadStatus.Success), saveError);
+
+            Assert.That(service.TryLoad(out GameSaveData loaded, out string loadError),
+                Is.EqualTo(SaveLoadStatus.Success), loadError);
+            AssertPosition(loaded.Player.Position, new Vector3(7f, 8f, 9f));
+            Assert.That(File.ReadAllText(_backupPath), Is.EqualTo(backupContents),
+                "The last save known to be good must stay as the backup.");
+
+            string[] preserved = Directory.GetFiles(_directory, FileName + ".unusable-*");
+            Assert.That(preserved, Has.Length.EqualTo(1), "The unusable file must be kept, not deleted.");
+            Assert.That(File.ReadAllText(preserved[0]), Is.EqualTo(damaged),
+                "The preserved file must hold the original bytes.");
+        }
+
+        [Test]
+        public void SavingWhileThePrimaryIsMissingKeepsTheExistingBackup()
+        {
+            LocalSaveService service = CreateService();
+            SaveTwoGenerations(service);
+            string backupContents = File.ReadAllText(_backupPath);
+            File.Delete(_savePath);
+
+            SaveLoadStatus saveStatus = service.TrySave(
+                CreateSampleSave(new Vector3(7f, 8f, 9f), Quaternion.identity), out string saveError);
+
+            Assert.That(saveStatus, Is.EqualTo(SaveLoadStatus.Success), saveError);
+            Assert.That(File.ReadAllText(_backupPath), Is.EqualTo(backupContents),
+                "A missing primary must not cost the existing backup.");
+        }
+}
 }

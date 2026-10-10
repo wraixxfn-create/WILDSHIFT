@@ -2231,6 +2231,7 @@ GameObject:
   - component: {fileID: 40002}
   - component: {fileID: 40003}
   - component: {fileID: 40004}
+  - component: {fileID: 40005}
   m_Layer: 0
   m_Name: World Clock
   m_TagString: Untagged
@@ -2328,6 +2329,7 @@ Transform:
   m_Children:
   - {fileID: 2000042}
   - {fileID: 2000047}
+  - {fileID: 2004002}
   m_Father: {fileID: 2000001}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 
@@ -9355,3 +9357,54 @@ MonoBehaviour:
   m_Name:
   m_EditorClassIdentifier: Wildshift.Runtime::Wildshift.Environment.Scanning.EnvironmentalScanTarget
   _definition: {fileID: 11400000, guid: 0dbf2ae5e0df431abc1ad58489e88305, type: 2}
+--- !u!1 &2004001
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2004002}
+  m_Layer: 0
+  m_Name: NACRE_01_Safe_Spawn_Point
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2004002
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2004001}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -12.5, y: 1.05, z: -14}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 2000007}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &40005
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 40001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dff41ef6f2d5400f826e299532f245e0, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Wildshift.Runtime::Wildshift.Persistence.PrototypeSaveController
+  _regionCatalog: {fileID: 11400000, guid: eee0f9c1cd5546cc9d0aad699932d913, type: 2}
+  _playerRegion: {fileID: 3012}
+  _playerMovement: {fileID: 3006}
+  _clockHost: {fileID: 40003}
+  _eventRecorderHost: {fileID: 40004}
+  _samples:
+  - {fileID: 2003006}
+  _safeSpawn: {fileID: 2004002}
+  _minimumValidHeight: -20

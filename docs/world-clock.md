@@ -37,6 +37,7 @@ frame-delta cap 0.25 s). No other code should create a `WorldClock` for the live
 | `AdvanceManually(worldSeconds)` | No | No | Exact advance for tests and development validation. Works while paused. |
 | `SetTimeScale(scale)` | n/a | n/a | Finite, non-negative. Zero freezes time without pausing. Applies to later real-time advances. |
 | `Pause()` / `Resume()` | n/a | n/a | Idempotent. Pausing does not raise events. |
+| `RestoreElapsedTicks(ticks)` | No | No | Sets elapsed time to a saved value (Prompt 20). May move time backwards, raises no event, and clears the sub-tick remainder. Only a save restore should call it. Refused from inside a `TimeAdvanced` subscriber. |
 
 Read-only state: `ElapsedTicks`, `ElapsedTime`, `TimeScale`, and `IsPaused`.
 
@@ -141,10 +142,11 @@ drift expectations were cross-checked with a line-by-line numerical mirror of th
 
 ## Open questions
 
-- **World time across scene transitions.** The clock resets when its scene is reloaded, because the session/world
-  owner that should carry it does not exist yet. When a save or world-session composition root is introduced, it
-  should own one `WorldClock`, persist `ElapsedTicks`, and restore it through a constructor parameter. Until then,
-  no save data includes world time.
+- **World time across scene transitions.** The clock still resets when its scene is reloaded on its own. Prompt 20
+  added the save side: `PrototypeSaveController` stores `ElapsedTime` in the save (`_elapsedWorldTime`) and restores
+  it with `RestoreElapsedTicks` on load, never earlier than the newest saved event. A reload without a load starts
+  again at zero, as before. A world-session owner that carries time across scene loads does not exist yet. See
+  [`prototype-save-load.md`](prototype-save-load.md#why-the-clock-is-restored).
 - **Pause and time scale for menus.** Gameplay menus should decide whether world time stops (`Pause()`) or
   continues. The clock does not make that choice.
 - **Pause events.** Subscribers can read `IsPaused` but are not notified when it changes. Add an event only when a

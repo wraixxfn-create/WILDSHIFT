@@ -49,6 +49,30 @@ namespace Wildshift.World.Events
             return null;
         }
 
+        /// <summary>
+        /// Replaces the authoritative recorder. Used only when a save is restored into this session: the
+        /// previous log is discarded rather than merged, so the replacement must already hold a validated
+        /// history. Build it on a staged recorder through <c>GameSaveMapper.TryApply</c> first, so a failed
+        /// restore never touches the live log.
+        /// </summary>
+        /// <exception cref="System.ArgumentNullException">Thrown when replacement is null.</exception>
+        /// <exception cref="System.InvalidOperationException">Thrown when this host is not the authoritative one.</exception>
+        public void ReplaceRecorder(PlayerActionEventRecorder replacement)
+        {
+            if (replacement == null)
+            {
+                throw new System.ArgumentNullException(nameof(replacement));
+            }
+
+            if (!_isAuthoritative)
+            {
+                throw new System.InvalidOperationException(
+                    "Only the authoritative PlayerActionEventRecorderHost can replace its recorder.");
+            }
+
+            _recorder = replacement;
+        }
+
         private void Awake()
         {
             if (HasAuthoritativeHostAlive())

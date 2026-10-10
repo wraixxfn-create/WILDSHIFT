@@ -309,5 +309,75 @@ namespace Wildshift.Tests
             clock.SetTimeScale(0d);
             clock.AdvanceRealTime(0.25d);
         }
-    }
+    
+        [Test]
+        public void RestoreElapsedTicksSetsTheClockAndMayMoveItBackwards()
+        {
+            WorldClock clock = new WorldClock();
+            clock.AdvanceManually(10d);
+
+            clock.RestoreElapsedTicks(3L * OneSecondTicks);
+
+            Assert.That(clock.ElapsedTicks, Is.EqualTo(3L * OneSecondTicks));
+            clock.AdvanceManually(1d);
+            Assert.That(clock.ElapsedTime, Is.EqualTo(4d));
+        }
+
+        [Test]
+        public void RestoreElapsedTicksIgnoresPauseAndRaisesNoEvent()
+        {
+            WorldClock clock = new WorldClock(startPaused: true);
+            int notifications = 0;
+            clock.TimeAdvanced += _ => notifications++;
+
+            clock.RestoreElapsedTicks(7L * OneSecondTicks);
+
+            Assert.That(clock.ElapsedTime, Is.EqualTo(7d));
+            Assert.That(notifications, Is.EqualTo(0), "Restoring a save is not an advance and must not notify subscribers.");
+        }
+
+        [Test]
+        public void RestoreElapsedTicksClearsTheSubTickRemainder()
+        {
+            WorldClock clock = new WorldClock();
+            clock.AdvanceManually(0.0000005d); // half a tick is carried as remainder
+
+            clock.RestoreElapsedTicks(0L);
+            clock.AdvanceManually(0.0000006d); // 0.6 ticks: only the old remainder would make this a whole tick
+
+            Assert.That(clock.ElapsedTicks, Is.EqualTo(0L), "The remainder belongs to the replaced timeline.");
+        }
+
+        [Test]
+        public void RestoreElapsedTicksRejectsOutOfRangeValues()
+        {
+            WorldClock clock = new WorldClock();
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => clock.RestoreElapsedTicks(-1L));
+            Assert.Throws<ArgumentOutOfRangeException>(() => clock.RestoreElapsedTicks(WorldClock.MaxElapsedTicks + 1L));
+            Assert.That(clock.ElapsedTicks, Is.EqualTo(0L), "A rejected restore must leave the clock unchanged.");
+        }
+
+        [Test]
+        public void RestoreElapsedTicksCannotBeCalledFromATimeAdvancedSubscriber()
+        {
+            WorldClock clock = new WorldClock();
+            InvalidOperationException caught = null;
+            clock.TimeAdvanced += _ =>
+            {
+                try
+                {
+                    clock.RestoreElapsedTicks(0L);
+                }
+                catch (InvalidOperationException exception)
+                {
+                    caught = exception;
+                }
+            };
+
+            clock.AdvanceManually(1d);
+
+            Assert.That(caught, Is.Not.Null, "Restoring from inside a subscriber must be refused.");
+        }
+}
 }

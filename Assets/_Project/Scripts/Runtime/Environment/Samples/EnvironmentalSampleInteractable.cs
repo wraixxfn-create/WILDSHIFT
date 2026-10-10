@@ -75,6 +75,17 @@ namespace Wildshift.Environment.Samples
             return string.IsNullOrWhiteSpace(prompt) ? null : prompt;
         }
 
+        /// <summary>
+        /// Sets the collected flag from a restored save. It records no event, shows no feedback, and writes
+        /// nothing: the event history arrives with the save itself, so a restore cannot duplicate a collection
+        /// record. Passing false makes the sample collectable again, which is correct when the save predates
+        /// the collection.
+        /// </summary>
+        public void RestoreCollectedState(bool collected)
+        {
+            _collected = collected;
+        }
+
         /// <inheritdoc />
         public bool CanInteract(GameObject interactor)
         {

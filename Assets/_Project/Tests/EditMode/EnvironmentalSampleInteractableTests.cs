@@ -203,5 +203,29 @@ namespace Wildshift.Tests
             serialized.FindProperty(propertyName).stringValue = value;
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
-    }
+    
+        [Test]
+        public void RestoreCollectedStateMarksTheSampleCollectedWithoutRecordingAnEvent()
+        {
+            _interactable.RestoreCollectedState(true);
+
+            Assert.That(_interactable.IsCollected, Is.True);
+            Assert.That(_interactable.CanInteract(_interactor), Is.False,
+                "A restored collection must reject interaction immediately.");
+            Assert.That(_host.Recorder.Count, Is.EqualTo(0),
+                "Restoring state must not write a second collection record; the saved history already holds it.");
+        }
+
+        [Test]
+        public void RestoreCollectedStateCanMakeTheSampleCollectableAgain()
+        {
+            _interactable.Interact(_interactor);
+            Assert.That(_interactable.IsCollected, Is.True);
+
+            _interactable.RestoreCollectedState(false);
+
+            Assert.That(_interactable.IsCollected, Is.False);
+            Assert.That(_interactable.CanInteract(_interactor), Is.True);
+        }
+}
 }

@@ -24,6 +24,9 @@ namespace Wildshift.Persistence
         /// entries are ordered by stable ID so two captures of identical state produce identical data.
         /// Only stable IDs, enums, and numbers are captured — never transforms, components, or names.
         /// </summary>
+        /// <param name="playerRegionId">Stable ID of the player's region, or null when outside all regions.</param>
+        /// <param name="elapsedWorldTime">Elapsed world time in seconds, from the scene's world clock.</param>
+        /// <param name="collectedSampleIds">Stable IDs of collected environmental samples. Stored sorted.</param>
         /// <exception cref="ArgumentNullException">Thrown when worldState or eventRecorder is null.</exception>
         /// <exception cref="ArgumentOutOfRangeException">Thrown when maxWorldEvents is negative.</exception>
         public static GameSaveData Capture(
@@ -31,7 +34,10 @@ namespace Wildshift.Persistence
             Quaternion playerOrientation,
             WorldStateService worldState,
             PlayerActionEventRecorder eventRecorder,
-            int maxWorldEvents = GameSaveData.DefaultMaxWorldEvents)
+            int maxWorldEvents = GameSaveData.DefaultMaxWorldEvents,
+            string playerRegionId = null,
+            double elapsedWorldTime = 0d,
+            IReadOnlyList<string> collectedSampleIds = null)
         {
             if (worldState == null)
             {
@@ -65,13 +71,22 @@ namespace Wildshift.Persistence
                 eventData.Add(events[index]);
             }
 
+            // Sorted so the same collection always produces the same file. Entries are not de-duplicated
+            // here: a duplicate is a caller error, and TrySave reports it instead of hiding it.
+            List<string> sampleData = collectedSampleIds != null
+                ? new List<string>(collectedSampleIds)
+                : new List<string>();
+            sampleData.Sort((left, right) => string.CompareOrdinal(left, right));
+
             return new GameSaveData(
                 GameSaveData.CurrentSchemaVersion,
                 DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
                 Application.version,
-                new PlayerSaveData(playerPosition, playerOrientation),
+                new PlayerSaveData(playerPosition, playerOrientation, playerRegionId),
                 regionData,
-                eventData);
+                eventData,
+                elapsedWorldTime,
+                sampleData);
         }
 
         /// <summary>
