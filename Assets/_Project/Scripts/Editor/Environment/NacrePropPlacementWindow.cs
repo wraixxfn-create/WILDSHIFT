@@ -171,12 +171,34 @@ namespace Wildshift.Editor.Environment
                 SceneView view = SceneView.lastActiveSceneView;
                 if (view != null)
                 {
-                    view.Frame(child.gameObject, true);
+                    view.Frame(GetFrameBounds(child), true);
                     view.Repaint();
                 }
 
                 return;
             }
+        }
+
+        /// <summary>
+        /// World-space bounds used to frame a prop in the Scene view. Prefers the renderer bounds the audit rules
+        /// judge the prop by, then the collider, and finally a small box at the transform, so an object without
+        /// either still gets framed. <see cref="SceneView.Frame(Bounds, bool)"/> takes bounds, not a GameObject.
+        /// </summary>
+        private static Bounds GetFrameBounds(Transform child)
+        {
+            Renderer renderer = child.GetComponent<Renderer>();
+            if (renderer != null)
+            {
+                return renderer.bounds;
+            }
+
+            Collider collider = child.GetComponent<Collider>();
+            if (collider != null)
+            {
+                return collider.bounds;
+            }
+
+            return new Bounds(child.position, Vector3.one);
         }
     }
 }
