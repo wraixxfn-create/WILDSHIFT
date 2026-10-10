@@ -11,7 +11,7 @@ list, and no system is notified when an event is recorded.
 
 | Type | Namespace | Responsibility |
 | --- | --- | --- |
-| `PlayerActionEventType` | `Wildshift.World.Events` | Enum of action kinds (region entry, object interaction, violence, wildlife disturbance, resource extraction, sabotage, settlement assistance). `None` is the unset default and is rejected by the recorder. |
+| `PlayerActionEventType` | `Wildshift.World.Events` | Enum of action kinds (region entry, object interaction, violence, wildlife disturbance, resource extraction, sabotage, settlement assistance, environment scan). `None` is the unset default and is rejected by the recorder. |
 | `PlayerActionEventParameter` | `Wildshift.World.Events` | Immutable named numeric value attached to an event: a stable ID plus one finite `float`. |
 | `PlayerActionEvent` | `Wildshift.World.Events` | Immutable, serializable record of one action. Holds only stable IDs, an enum, and numbers — never Unity object references. |
 | `PlayerActionEventRecorder` | `Wildshift.World.Events` | Non-global in-memory log owner. Validates and stores events chronologically, answers queries, and keeps the history bounded. |
@@ -121,4 +121,4 @@ Unity Editor.
 | Reacting systems (ecology, factions, adaptive world) | Read-only consumers that query the log on their own cadence from a composition boundary. | Automatic reactions, ecosystem changes, faction strengthening, or any write into world state triggered by this layer. |
 | Persistence | Durable snapshots of retained events with format/versioning in `Wildshift.Persistence`; a cross-session ID scheme if records leave the log. | Save/load code, cloud services, or analytics. |
 | Region-owned history | `RegionState` collections that reference stable event IDs recorded here (see `world-state.md`). | Duplicating the log per region or coupling the recorder to `WorldStateService`. |
-| New event vocabulary | New `PlayerActionEventType` values or parameter IDs when a reacting system defines the term. | Speculative event types, stringly typed kinds, or free-form payloads. |
+| New event vocabulary | New `PlayerActionEventType` values or parameter IDs when a reacting system defines the term. `EnvironmentScan` was added when the handheld scanner started recording real inspections. | Speculative event types, stringly typed kinds, or free-form payloads. |

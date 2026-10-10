@@ -224,6 +224,8 @@ GameObject:
   - component: {fileID: 3007}
   - component: {fileID: 3008}
   - component: {fileID: 3009}
+  - component: {fileID: 3010}
+  - component: {fileID: 3011}
   m_Layer: 2
   m_Name: Player Placeholder (CharacterController)
   m_TagString: Untagged
@@ -9150,6 +9152,50 @@ MonoBehaviour:
   _displayDurationSeconds: 4
   _topInset: 80
   _boxWidth: 460
+--- !u!114 &3010
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24a60212f04d47eb84505da11bd9b88d, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Wildshift.Runtime::Wildshift.Player.Scanning.PlayerEnvironmentalScanner
+  _input: {fileID: 7003}
+  _viewCamera: {fileID: 1004}
+  _clockHost: {fileID: 40003}
+  _regionLocator: {fileID: 0}
+  _eventRecorderHost: {fileID: 40004}
+  _scanButton: 6
+  _scanRange: 8
+  _probeRange: 24
+  _detectionLayers:
+    serializedVersion: 2
+    m_Bits: 4294967291
+  _allowRepeatScans: 1
+  _recordRepeatScans: 0
+--- !u!114 &3011
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fb0d2b14d9734fe38f95bc6544171108, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Wildshift.Runtime::Wildshift.UI.EnvironmentalScannerFeedback
+  _scanner: {fileID: 3010}
+  _displayDurationSeconds: 3.5
+  _topInset: 160
+  _boxWidth: 480
+  _invalidTargetMessage: Nothing to scan.
+  _outOfRangeMessage: Target is out of range.
+  _alreadyScannedMessage: Already scanned.
 --- !u!114 &40004
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9176,6 +9222,7 @@ GameObject:
   - component: {fileID: 2003004}
   - component: {fileID: 2003005}
   - component: {fileID: 2003006}
+  - component: {fileID: 2003007}
   m_Layer: 0
   m_Name: ENV_Sample_DisturbedSoil_A
   m_TagString: Untagged
@@ -9282,3 +9329,16 @@ MonoBehaviour:
   _clockHost: {fileID: 40003}
   _regionLocator: {fileID: 0}
   _eventRecorderHost: {fileID: 40004}
+--- !u!114 &2003007
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2003001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b9ca7bd83d074ea4a61b2fecd26911f5, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Wildshift.Runtime::Wildshift.Environment.Scanning.EnvironmentalScanTarget
+  _definition: {fileID: 11400000, guid: 0dbf2ae5e0df431abc1ad58489e88305, type: 2}

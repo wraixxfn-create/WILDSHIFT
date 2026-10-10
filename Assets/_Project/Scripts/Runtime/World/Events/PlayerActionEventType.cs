@@ -4,7 +4,8 @@ namespace Wildshift.World.Events
     /// Strongly typed kind of one recorded player action. A future world can respond to patterns of
     /// these actions, so the set is deliberately small and defined: add a value only when a reacting
     /// system defines the term, never as a free-form string. <see cref="None"/> is the unset default
-    /// and is rejected by the recorder.
+    /// and is rejected by the recorder. Current kinds: region entry, object interaction, violence,
+    /// wildlife disturbance, resource extraction, sabotage, settlement assistance, and environment scan.
     /// </summary>
     public enum PlayerActionEventType
     {
@@ -31,5 +32,8 @@ namespace Wildshift.World.Events
 
         /// <summary>The player helped a settlement or its members.</summary>
         SettlementAssistance = 7,
+
+        /// <summary>The player inspected a world object with the environmental scanner.</summary>
+        EnvironmentScan = 8,
     }
 }
