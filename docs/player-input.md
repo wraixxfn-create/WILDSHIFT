@@ -21,7 +21,7 @@ and edited in Unity's Input Actions editor.
 | LightAttack | Button | Left mouse button |
 | HeavyAttack | Button | Right mouse button |
 | Dodge | Button | Left Ctrl |
-| AbilityPrimary | Button | 1 |
+| AbilityPrimary | Button | 1 (reused by the environmental scanner; see [`environmental-scanner.md`](environmental-scanner.md)) |
 | AbilitySecondary | Button | 2 |
 | AbilityTertiary | Button | 3 |
 | Pause | Button | Escape |

@@ -11,7 +11,9 @@ introducing a separate interaction system.
   ecology site (world approximately `(73.5, 0.18, -12.5)`, local to the Nacre root `(13.5, 0.18, -12.5)`).
 - A single press of **Interact (E)** while aiming at it within the detector's 2.5 m range collects it.
 - After collection the sample shows no prompt, rejects further interaction, and the event log
-  contains exactly one record per play session.
+  contains exactly one collection record per play session. The same object can still be inspected
+  with the environmental scanner (see [`environmental-scanner.md`](environmental-scanner.md)); scanning is a
+  separate `IScanTarget` component and does not restore collection.
 - No inventory, crafting, quest, dialogue, or research tree. No new input actions. No persistent
   save (collection resets on scene reload, matching the existing save model).
 
