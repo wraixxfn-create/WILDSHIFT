@@ -57,7 +57,7 @@ namespace Wildshift.Player.Scanning
         /// <summary>Authored scan result text on a successful scan; otherwise null.</summary>
         public string ScanResultText { get; }
 
-        /// <summary>Stable region ID recorded with a successful scan, or null when none was resolved.</summary>
+        /// <summary>Player's stable region ID at successful scan commit, or null when none was resolved.</summary>
         public string RegionId { get; }
 
         /// <summary>True when this attempt appended a record to the player action event log.</summary>

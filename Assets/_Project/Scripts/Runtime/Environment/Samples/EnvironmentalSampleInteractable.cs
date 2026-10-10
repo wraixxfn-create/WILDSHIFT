@@ -17,8 +17,8 @@ namespace Wildshift.Environment.Samples
     /// (already in place from Prompt 7) treats it as any other <see cref="IInteractable"/>. A press
     /// of the existing Interact input records a
     /// <see cref="PlayerActionEventType.ResourceExtraction"/> event with the sample's stable ID as
-    /// <c>targetId</c> and the containing region as <c>regionId</c>, marks the instance collected
-    /// for this session, surfaces concise feedback via <see cref="SampleCollectionFeedback"/>, and
+    /// <c>targetId</c> and the player's completion-time region as <c>regionId</c>, marks the instance
+    /// collected for this session, surfaces concise feedback via <see cref="SampleCollectionFeedback"/>, and
     /// disables further interaction until the scene is reloaded.</para>
     /// <para>No persistent save is made. Duplicate collection is guarded both by
     /// <see cref="CanInteract"/> returning false after collection and by an idempotency check
@@ -37,12 +37,11 @@ namespace Wildshift.Environment.Samples
         [Header("Scene references (optional; auto-resolved if unset)")]
         [SerializeField, Tooltip("World clock host used to timestamp the collection event. Falls back to FindFirstObjectByType if unset.")]
         private WorldClockHost _clockHost;
-        [SerializeField, Tooltip("Region locator used to tag the event with the containing region. Falls back to FindFirstObjectByType if unset.")]
-        private WorldRegionLocator _regionLocator;
         [SerializeField, Tooltip("Event recorder host that receives the collection event. Falls back to PlayerActionEventRecorderHost.FindFirstAvailable if unset.")]
         private PlayerActionEventRecorderHost _eventRecorderHost;
 
         private bool _collected;
+        private bool _missingRegionContextLogged;
 
         /// <summary>True after a successful collection for this play session.</summary>
         public bool IsCollected => _collected;
@@ -96,15 +95,20 @@ namespace Wildshift.Environment.Samples
 
             _collected = true;
 
-            string regionId = ResolveRegionId();
+            // Interact is the successful commit point. Resolving from the interactor now means a multi-frame
+            // interaction is attributed to the player's region at completion, not where it began.
+            string regionId = ResolveRegionId(interactor);
             double elapsedTime = ResolveElapsedTime();
 
             RecordCollectionEvent(elapsedTime, regionId);
             ShowCollectionFeedback();
 
+            string regionDescription = regionId != null
+                ? $"region '{regionId}'"
+                : "unregistered space";
             WildshiftLog.Info(
                 $"Collected environmental sample '{_definition.DisplayName}' ({_definition.StableId}) " +
-                $"in region '{regionId}' at world time {elapsedTime:0.###}s.", this);
+                $"in {regionDescription} at world time {elapsedTime:0.###}s.", this);
         }
 
         private void RecordCollectionEvent(double elapsedWorldTime, string regionId)
@@ -178,21 +182,29 @@ namespace Wildshift.Environment.Samples
             return 0d;
         }
 
-        private string ResolveRegionId()
+        private string ResolveRegionId(GameObject interactor)
         {
-            if (_regionLocator == null)
+            // Search only the supplied interactor's parent chain. This is not a scene-wide lookup, and it
+            // ensures the action follows the player who actually performed it rather than the target object.
+            IWorldRegionContext regionContext = interactor != null
+                ? interactor.GetComponentInParent<IWorldRegionContext>()
+                : null;
+            if (regionContext != null)
             {
-                _regionLocator = FindFirstObjectByType<WorldRegionLocator>();
+                return regionContext.TryResolveRegionForAction(out string stableId) ? stableId : null;
             }
 
-            if (_regionLocator == null || !_regionLocator.IsAvailable)
+            if (!_missingRegionContextLogged)
             {
-                return null;
+                WildshiftLog.Warning(
+                    $"Cannot resolve a player region for sample '{_definition.StableId}' because interactor " +
+                    $"'{interactor?.name ?? "<null>"}' has no {nameof(IWorldRegionContext)}. " +
+                    "The collection event will be recorded without a region ID.",
+                    this);
+                _missingRegionContextLogged = true;
             }
 
-            WorldRegionQueryResult result = _regionLocator.FindRegionAt(transform.position);
-            string stableId = result.RegionId;
-            return string.IsNullOrWhiteSpace(stableId) ? null : stableId;
+            return null;
         }
     }
 }

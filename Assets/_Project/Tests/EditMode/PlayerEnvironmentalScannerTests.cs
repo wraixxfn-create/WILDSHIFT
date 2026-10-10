@@ -1,10 +1,13 @@
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
+using UnityEngine.TestTools;
 using Wildshift.Player.Input;
+using Wildshift.Player.Regions;
 using Wildshift.Player.Scanning;
 using Wildshift.World;
 using Wildshift.World.Events;
@@ -30,9 +33,14 @@ namespace Wildshift.Tests
         private GameObject _hostObject;
         private PlayerInputReader _input;
         private PlayerEnvironmentalScanner _scanner;
+        private PlayerRegionAssociation _regionAssociation;
         private RecordingScanTarget _target;
         private PlayerActionEventRecorderHost _host;
         private Keyboard _keyboard;
+        private WorldRegionTestObjects _regionObjects;
+        private WorldRegionLocator _regionLocator;
+        private WorldRegionVolume _playerRegionVolume;
+        private WorldRegionVolume _targetRegionVolume;
 
         // Camera at z=-6 looks along +Z. The player is at z=-3 (range origin); the target face is at z=-1.5.
         // The range origin to the target face is 1.5 m, inside the 2 m test scan range.
@@ -57,12 +65,45 @@ namespace Wildshift.Tests
             _hostObject = new GameObject("Scanner Event Recorder Host Test");
             _host = _hostObject.AddComponent<PlayerActionEventRecorderHost>();
 
+            _regionObjects = new WorldRegionTestObjects();
+            RegionDefinition playerRegion = _regionObjects.CreateDefinition(
+                "nacre/test/scanner-player-region", "Scanner Player Region");
+            RegionDefinition targetRegion = _regionObjects.CreateDefinition(
+                "nacre/test/scanner-target-region", "Scanner Target Region");
+            WorldRegionCatalog catalog = _regionObjects.CreateCatalog(playerRegion, targetRegion);
+            GameObject locatorRoot = _regionObjects.CreateObject("Scanner Region Locator");
+            locatorRoot.SetActive(false);
+            locatorRoot.transform.position = Offset;
+            _regionLocator = locatorRoot.AddComponent<WorldRegionLocator>();
+            WorldRegionTestObjects.SetLocatorCatalog(_regionLocator, catalog);
+            _playerRegionVolume = _regionObjects.CreateVolume(
+                locatorRoot.transform,
+                playerRegion,
+                new Vector3(0f, 0f, -6f),
+                new Vector3(20f, 20f, 8f),
+                0,
+                "Scanner Player Region Volume");
+            _targetRegionVolume = _regionObjects.CreateVolume(
+                locatorRoot.transform,
+                targetRegion,
+                new Vector3(0f, 0f, 3f),
+                new Vector3(20f, 20f, 10f),
+                0,
+                "Scanner Target Region Volume");
+            WorldRegionTestObjects.SetLocatorVolumes(
+                _regionLocator, new[] { _playerRegionVolume, _targetRegionVolume });
+            locatorRoot.SetActive(true);
+            Assert.That(_regionLocator.IsAvailable, Is.True, string.Join("\n", _regionLocator.ValidationErrors));
+
             _playerObject = new GameObject("Scanner Player Test");
             _playerObject.transform.position = Offset + new Vector3(0f, 1f, -3f);
             _playerObject.SetActive(false);
+            _regionAssociation = _playerObject.AddComponent<PlayerRegionAssociation>();
+            SetObjectReference(_regionAssociation, "_regionLocator", _regionLocator);
             _scanner = _playerObject.AddComponent<PlayerEnvironmentalScanner>();
             SetObjectReference(_scanner, "_input", _input);
             SetObjectReference(_scanner, "_viewCamera", _cameraObject.GetComponent<UnityEngine.Camera>());
+            SetObjectReference(_scanner, "_regionAssociation", _regionAssociation);
             SetObjectReference(_scanner, "_eventRecorderHost", _host);
             SetFloat(_scanner, "_scanRange", 2f);
             SetFloat(_scanner, "_probeRange", 20f);
@@ -84,6 +125,7 @@ namespace Wildshift.Tests
             DestroyIfPresent(_cameraObject);
             DestroyIfPresent(_inputObject);
             DestroyIfPresent(_hostObject);
+            _regionObjects?.DestroyAll();
             if (_keyboard != null && _keyboard.added)
             {
                 InputSystem.RemoveDevice(_keyboard);
@@ -110,6 +152,7 @@ namespace Wildshift.Tests
             IReadOnlyList<PlayerActionEvent> events = _host.Recorder.GetRecentEvents(10);
             Assert.That(events.Count, Is.EqualTo(1));
             Assert.That(events[0].EventType, Is.EqualTo(PlayerActionEventType.EnvironmentScan));
+            Assert.That(events[0].RegionId, Is.EqualTo("nacre/test/scanner-player-region"));
             Assert.That(events[0].TargetId, Is.EqualTo("test/scan/target-a"));
             Assert.That(events[0].HasMagnitude, Is.True);
             Assert.That(events[0].Magnitude, Is.EqualTo(1f));
@@ -262,43 +305,42 @@ namespace Wildshift.Tests
         }
 
         [Test]
-        public void SuccessfulScanRecordsTheContainingRegionId()
+        public void SuccessfulScanRecordsPlayersRegionRatherThanTargetsRegion()
         {
-            WorldRegionTestObjects objects = new WorldRegionTestObjects();
-            try
-            {
-                RegionDefinition definition = objects.CreateDefinition("nacre/test/scanner-region", "Scanner Region");
-                WorldRegionCatalog catalog = objects.CreateCatalog(definition);
+            Assert.That(_regionLocator.FindRegionAt(_playerObject.transform.position).RegionId,
+                Is.EqualTo("nacre/test/scanner-player-region"));
+            Assert.That(_regionLocator.FindRegionAt(_targetObject.transform.position).RegionId,
+                Is.EqualTo("nacre/test/scanner-target-region"),
+                "The fixture deliberately puts the scanned target across the region boundary.");
 
-                GameObject locatorRoot = objects.CreateObject("Scanner Region Locator");
-                locatorRoot.SetActive(false);
-                locatorRoot.transform.position = Offset;
-                WorldRegionLocator locator = locatorRoot.AddComponent<WorldRegionLocator>();
-                WorldRegionTestObjects.SetLocatorCatalog(locator, catalog);
-                WorldRegionVolume volume = objects.CreateVolume(
-                    locatorRoot.transform,
-                    definition,
-                    Vector3.zero,
-                    new Vector3(20f, 20f, 20f),
-                    0);
-                WorldRegionTestObjects.SetLocatorVolumes(locator, new[] { volume });
-                locatorRoot.SetActive(true);
-                Assert.That(locator.IsAvailable, Is.True, string.Join("\n", locator.ValidationErrors));
+            ScanAttemptResult result = _scanner.TryScan();
 
-                SetObjectReference(_scanner, "_regionLocator", locator);
+            Assert.That(result.Outcome, Is.EqualTo(ScanAttemptOutcome.Success));
+            Assert.That(result.RegionId, Is.EqualTo("nacre/test/scanner-player-region"));
+            Assert.That(result.RegionId, Is.Not.EqualTo("Scanner Player Region"),
+                "The display name must never become an event identifier.");
+            Assert.That(_host.Recorder.Count, Is.EqualTo(1));
+            Assert.That(_host.Recorder.GetRecentEvents(1)[0].RegionId,
+                Is.EqualTo("nacre/test/scanner-player-region"));
+            Assert.That(_host.Recorder.GetRecentEvents(1)[0].TargetId, Is.EqualTo("test/scan/target-a"));
+        }
 
-                ScanAttemptResult result = _scanner.TryScan();
+        [Test]
+        public void SuccessfulScanOutsideRegisteredRegionsRecordsNoRegionId()
+        {
+            _playerRegionVolume.gameObject.SetActive(false);
+            _targetRegionVolume.gameObject.SetActive(false);
+            _regionAssociation.RefreshRegionAssociation();
+            LogAssert.Expect(LogType.Warning, new Regex("player is outside all registered region volumes"));
 
-                Assert.That(result.Outcome, Is.EqualTo(ScanAttemptOutcome.Success));
-                Assert.That(result.RegionId, Is.EqualTo("nacre/test/scanner-region"));
-                Assert.That(_host.Recorder.Count, Is.EqualTo(1));
-                Assert.That(_host.Recorder.GetRecentEvents(1)[0].RegionId, Is.EqualTo("nacre/test/scanner-region"));
-                Assert.That(_host.Recorder.GetRecentEvents(1)[0].TargetId, Is.EqualTo("test/scan/target-a"));
-            }
-            finally
-            {
-                objects.DestroyAll();
-            }
+            ScanAttemptResult result = _scanner.TryScan();
+
+            Assert.That(result.Outcome, Is.EqualTo(ScanAttemptOutcome.Success));
+            Assert.That(result.RegionId, Is.Null);
+            Assert.That(result.EventRecorded, Is.True);
+            PlayerActionEvent evt = _host.Recorder.GetRecentEvents(1)[0];
+            Assert.That(evt.HasRegionId, Is.False);
+            Assert.That(evt.RegionId, Is.Null, "Outside scans must not receive a fabricated region ID.");
         }
 
         private static bool HasScanParameter(PlayerActionEvent evt)

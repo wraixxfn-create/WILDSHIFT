@@ -226,6 +226,7 @@ GameObject:
   - component: {fileID: 3009}
   - component: {fileID: 3010}
   - component: {fileID: 3011}
+  - component: {fileID: 3012}
   m_Layer: 2
   m_Name: Player Placeholder (CharacterController)
   m_TagString: Untagged
@@ -9167,7 +9168,7 @@ MonoBehaviour:
   _input: {fileID: 7003}
   _viewCamera: {fileID: 1004}
   _clockHost: {fileID: 40003}
-  _regionLocator: {fileID: 0}
+  _regionAssociation: {fileID: 3012}
   _eventRecorderHost: {fileID: 40004}
   _scanButton: 6
   _scanRange: 8
@@ -9196,6 +9197,19 @@ MonoBehaviour:
   _invalidTargetMessage: Nothing to scan.
   _outOfRangeMessage: Target is out of range.
   _alreadyScannedMessage: Already scanned.
+--- !u!114 &3012
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3001}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: df23236466484dd6863c733f93806dc2, type: 3}
+  m_Name:
+  m_EditorClassIdentifier: Wildshift.Runtime::Wildshift.Player.Regions.PlayerRegionAssociation
+  _regionLocator: {fileID: 2000213}
 --- !u!114 &40004
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -9327,7 +9341,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Wildshift.Runtime::Wildshift.Environment.Samples.EnvironmentalSampleInteractable
   _definition: {fileID: 11400000, guid: a2693dde6d9858ca89b6f0b8f174bd61, type: 2}
   _clockHost: {fileID: 40003}
-  _regionLocator: {fileID: 0}
   _eventRecorderHost: {fileID: 40004}
 --- !u!114 &2003007
 MonoBehaviour:

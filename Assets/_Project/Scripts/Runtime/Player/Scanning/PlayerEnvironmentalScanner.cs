@@ -4,6 +4,7 @@ using UnityEngine;
 using Wildshift.Core.Diagnostics;
 using Wildshift.Interaction;
 using Wildshift.Player.Input;
+using Wildshift.Player.Regions;
 using Wildshift.World.Clock;
 using Wildshift.World.Events;
 using Wildshift.World.Regions;
@@ -37,8 +38,8 @@ namespace Wildshift.Player.Scanning
         private UnityEngine.Camera _viewCamera;
         [SerializeField, Tooltip("World clock host used to timestamp scan events. Falls back to FindFirstObjectByType if unset.")]
         private WorldClockHost _clockHost;
-        [SerializeField, Tooltip("Region locator used to tag the event with the containing region. Falls back to FindFirstObjectByType if unset.")]
-        private WorldRegionLocator _regionLocator;
+        [SerializeField, Tooltip("Player region association used to tag successful scan events at commit time. Falls back to this GameObject's component if unset.")]
+        private PlayerRegionAssociation _regionAssociation;
         [SerializeField, Tooltip("Event recorder host that receives successful scans. Falls back to PlayerActionEventRecorderHost.FindFirstAvailable if unset.")]
         private PlayerActionEventRecorderHost _eventRecorderHost;
 
@@ -63,6 +64,7 @@ namespace Wildshift.Player.Scanning
         private readonly RaycastHit[] _hits = new RaycastHit[MaxHits];
         private readonly HashSet<string> _scannedTargetIds = new HashSet<string>(StringComparer.Ordinal);
         private PlayerInputReader _subscribedInput;
+        private bool _missingRegionContextLogged;
 
         /// <summary>Raised after every scan attempt, including invalid, out-of-range, and rejected repeats.</summary>
         public event Action<ScanAttemptResult> ScanAttempted;
@@ -93,6 +95,8 @@ namespace Wildshift.Player.Scanning
                     "Scanning is disabled.",
                     this);
             }
+
+            ResolveRegionContext();
         }
 
         private void OnEnable()
@@ -178,8 +182,6 @@ namespace Wildshift.Player.Scanning
             }
 
             bool isRepeat = _scannedTargetIds.Contains(candidate.TargetId);
-            string regionId = ResolveRegionId(ResolveTargetPosition(candidate, nearest));
-
             if (isRepeat && !_allowRepeatScans)
             {
                 return ScanAttemptResult.RepeatRejected(
@@ -187,9 +189,12 @@ namespace Wildshift.Player.Scanning
                     candidate.DisplayName,
                     candidate.Description,
                     candidate.ScanResult,
-                    regionId);
+                    regionId: null);
             }
 
+            // A successful in-range classification is the scan's commit point. Resolve the player's
+            // position now, so movement during any future multi-frame scan records the completion region.
+            string regionId = ResolveRegionIdForAction();
             bool shouldRecord = !isRepeat || _recordRepeatScans;
             bool recorded = false;
             if (shouldRecord)
@@ -201,8 +206,11 @@ namespace Wildshift.Player.Scanning
 
             if (recorded)
             {
+                string regionDescription = regionId != null
+                    ? $"region '{regionId}'"
+                    : "unregistered space";
                 WildshiftLog.Info(
-                    $"Scanned '{candidate.DisplayName}' ({candidate.TargetId}) in region '{regionId}'.",
+                    $"Scanned '{candidate.DisplayName}' ({candidate.TargetId}) in {regionDescription}.",
                     this);
             }
 
@@ -248,16 +256,6 @@ namespace Wildshift.Player.Scanning
             return true;
         }
 
-        private static Vector3 ResolveTargetPosition(IScanTarget candidate, RaycastHit hit)
-        {
-            if (candidate is Component component && component != null)
-            {
-                return component.transform.position;
-            }
-
-            return hit.point;
-        }
-
         private PlayerActionEventRecorder ResolveRecorder()
         {
             if (_eventRecorderHost != null && _eventRecorderHost.Recorder != null)
@@ -290,21 +288,37 @@ namespace Wildshift.Player.Scanning
             return 0d;
         }
 
-        private string ResolveRegionId(Vector3 worldPosition)
+        private string ResolveRegionIdForAction()
         {
-            if (_regionLocator == null)
+            IWorldRegionContext regionContext = ResolveRegionContext();
+            return regionContext != null && regionContext.TryResolveRegionForAction(out string stableId)
+                ? stableId
+                : null;
+        }
+
+        private IWorldRegionContext ResolveRegionContext()
+        {
+            if (_regionAssociation == null)
             {
-                _regionLocator = FindFirstObjectByType<WorldRegionLocator>();
+                // Local component lookup only; never search the scene from the scan path.
+                _regionAssociation = GetComponent<PlayerRegionAssociation>();
             }
 
-            if (_regionLocator == null || !_regionLocator.IsAvailable)
+            if (_regionAssociation != null)
             {
-                return null;
+                return _regionAssociation;
             }
 
-            WorldRegionQueryResult result = _regionLocator.FindRegionAt(worldPosition);
-            string stableId = result.RegionId;
-            return string.IsNullOrWhiteSpace(stableId) ? null : stableId;
+            if (!_missingRegionContextLogged)
+            {
+                WildshiftLog.Warning(
+                    $"{nameof(PlayerEnvironmentalScanner)} on '{name}' has no {nameof(PlayerRegionAssociation)}. " +
+                    "Any recorded scan will omit the region ID.",
+                    this);
+                _missingRegionContextLogged = true;
+            }
+
+            return null;
         }
 
         private void OnButtonPressed(PlayerInputButton button)

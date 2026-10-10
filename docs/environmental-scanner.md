@@ -14,7 +14,7 @@ player-action event log.
   remains scannable after collection.
 - Readable IMGUI feedback for a successful scan, an invalid target, and an out-of-range target.
 - A successful first scan records one `PlayerActionEventType.EnvironmentScan` event with the
-  target's stable ID and the containing region ID.
+  target's stable ID and the acting player's stable region ID at successful commit time.
 - Repeat scans of the same target are allowed (the player can re-read the result) but are **not**
   recorded again unless `Record Repeat Scans` is enabled.
 - No weapon behaviour, codex, quest rewards, upgrade tree, or scanning minigame. No new packages.
@@ -37,6 +37,7 @@ Light Attack, Heavy Attack, and Dodge are left unused; they remain reserved for 
 | `EnvironmentalScanDefinition` | `Wildshift.Environment.Scanning` | ScriptableObject authored asset. Read-only at runtime. |
 | `EnvironmentalScanTarget` | `Wildshift.Environment.Scanning` | Scene component that implements `IScanTarget` from a definition. |
 | `PlayerEnvironmentalScanner` | `Wildshift.Player.Scanning` | Player-side aim ray, range and line-of-sight checks, repeat policy, and event recording. Owns no presentation. |
+| `PlayerRegionAssociation` | `Wildshift.Player.Regions` | Shared player-position-to-stable-region integration used at scan commit time; see [`player-region-integration.md`](player-region-integration.md). |
 | `ScanAttemptResult` / `ScanAttemptOutcome` | `Wildshift.Player.Scanning` | Immutable scan outcome consumed by UI. No Unity object references. |
 | `EnvironmentalScannerFeedback` | `Wildshift.UI` | IMGUI listener for `ScanAttempted`. Replaceable without rewriting scan logic. |
 
@@ -81,7 +82,7 @@ A successful recorded scan appends:
 
 - `eventType = EnvironmentScan`
 - `elapsedWorldTime` from `WorldClockHost`
-- `regionId` from `WorldRegionLocator.FindRegionAt` at the target's position (`nacre/frontier/survey-site` for the sample)
+- `regionId` from `PlayerRegionAssociation.TryResolveRegionForAction` at the player's position when the scan succeeds (`nacre/frontier/survey-site` in the prototype); null if the player is outside registered regions
 - `targetId` from the scan definition (never the GameObject name)
 - `magnitude = 1`
 - parameter `environment-scan = 1`
@@ -105,9 +106,9 @@ reference the UI type.
 
 ## Scene (Prototype.unity)
 
-- `PlayerEnvironmentalScanner` (3010) and `EnvironmentalScannerFeedback` (3011) on the existing
-  player object, wired to the existing input reader, main camera, world clock, and event recorder
-  host.
+- `PlayerEnvironmentalScanner` (3010), `EnvironmentalScannerFeedback` (3011), and
+  `PlayerRegionAssociation` (3012) on the existing player object. The scanner is wired to the
+  association; the association is wired to the existing Nacre region locator.
 - `EnvironmentalScanTarget` (2003007) on `ENV_Sample_DisturbedSoil_A`, referencing
   `NacreDisturbedSoilScan`.
 
@@ -122,7 +123,8 @@ Edit Mode tests:
   Primary (**1**), Interact does not scan, invalid target, empty aim, range restore, solid
   obstacle blocking line of sight, own collider ignored, disabled/unavailable targets, default
   repeat scans not flooding the log, optional repeat recording, optional repeat rejection, and
-  region identification through `WorldRegionLocator`.
+  player-region attribution through `PlayerRegionAssociation` (including player/target regions
+  differing and the player being outside every region).
 - `Assets/_Project/Tests/EditMode/EnvironmentalScanTargetTests.cs` — authored fields, blank ID,
   missing definition, disabled component.
 
