@@ -1,0 +1,36 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5f66f95c6a4c492e8b0c1ff6a440c592, type: 3}
+  m_Name: NacreSiltveilGrazer
+  m_EditorClassIdentifier:
+  _stableId: nacre/species/siltveil-grazer
+  _displayName: Siltveil Grazer
+  _loreDescription: A low, broad-bodied grazer that sifts the pearlescent microbial mat spreading over disturbed Nacre soil through a soft fringe along its belly. A dorsal fan of thin plates folds flat against rock, so a resting grazer reads as another shell shard among the shards. It has no eyes to speak of; a ring of pressure pits around its snout reads footfalls through the ground, which is why it tracks movement rather than shapes and bolts at a sudden jolt from far beyond where a walking surveyor would register.
+  _sizeClass: 1
+  _wanderSpeedMetresPerSecond: 0.7
+  _fleeSpeedMetresPerSecond: 3.4
+  _accelerationMetresPerSecondSquared: 9
+  _turnRateDegreesPerSecond: 260
+  _maximumSlopeDegrees: 40
+  _wanderRadiusMetres: 4
+  _noticeRadiusMetres: 9
+  _fleeRadiusMetres: 3.5
+  _startleRadiusMetres: 12
+  _minimumActorSpeedMetresPerSecond: 0.6
+  _perceptionHeightOffsetMetres: 0.3
+  _requiresLineOfSight: 1
+  _perceptionIntervalSeconds: 0.15
+  _idleMinSeconds: 2.5
+  _idleMaxSeconds: 7
+  _alertHoldSeconds: 1.2
+  _calmDownSeconds: 3.5
+  _fleeDurationSeconds: 1.6
