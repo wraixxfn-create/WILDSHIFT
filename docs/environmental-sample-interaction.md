@@ -39,6 +39,8 @@ introducing a separate interaction system.
 
 ### Scene (Prototype.unity) changes
 
+- `PlayerRegionAssociation` (fileID 3012) is on the player and references the existing Nacre
+  `WorldRegionLocator`; sample interactions discover it only through their supplied interactor.
 - Added `PlayerActionEventRecorderHost` (fileID 40004) as a component on the existing `World Clock`
   GameObject so the clock and recorder share one "scene services" object.
 - Added `InteractionPromptHud` (3008) and `SampleCollectionFeedback` (3009) as components on the
@@ -49,8 +51,9 @@ introducing a separate interaction system.
   grey), a `BoxCollider` (so the detector's aim ray hits a solid collider — trigger colliders are
   deliberately ignored by `PlayerInteractionDetector`), and the
   `EnvironmentalSampleInteractable` component referencing the authored definition asset. The
-  clock host and recorder host are wired via Inspector reference; the region locator is
-  auto-resolved at interaction time.
+  clock host and recorder host are wired via Inspector reference. Region attribution comes from
+  the `PlayerRegionAssociation` on the supplied player interactor; no scene-wide region lookup runs
+  from the sample.
 
 ## Interaction behaviour
 
@@ -64,8 +67,9 @@ introducing a separate interaction system.
    the target and calls `Interact` on it. The sample:
    - Double-checks `CanInteract` (defensive idempotency).
    - Sets `_collected = true` so subsequent `CanInteract` returns false.
-   - Resolves world time from `WorldClockHost` (auto-resolved if not wired) and the containing
-     region from `WorldRegionLocator` (auto-resolved).
+   - Resolves world time from `WorldClockHost` and asks the supplied interactor's
+     `IWorldRegionContext` for the acting player's region at successful commit time. The target's
+     position is not used for attribution.
    - Records a `PlayerActionEventType.ResourceExtraction` event with:
      - stable `id` (new GUID via `PlayerActionEvent.NewId()`),
      - `eventType = ResourceExtraction`,
@@ -77,6 +81,10 @@ introducing a separate interaction system.
    - Calls `SampleCollectionFeedback.Instance.Show(definition)` to surface the short confirmation
      banner for a few seconds.
    - Logs a concise informational message to the console via `WildshiftLog`.
+   - If the player is outside every registered region (or region lookup is unavailable), still
+     records the successful collection with `regionId = null`; no placeholder ID is fabricated.
+   - If a future collection gains a multi-frame progress phase and the player crosses a boundary,
+     the region at successful completion wins. See [`player-region-integration.md`](player-region-integration.md).
 4. **Post-collection.** `CanInteract` returns false, so the detector no longer treats the cube as
    a valid target — the prompt disappears, the object still renders and collides (so later
    iterations can add a "collected" visual), and further presses of E produce nothing. No second
@@ -125,6 +133,9 @@ construct the component, a definition asset (via `ScriptableObject.CreateInstanc
 - `Interact` is idempotent: multiple calls record exactly one event, with the correct
   `ResourceExtraction` type, sample stable ID as `targetId`, magnitude `1f`, and a
   `sample-collected=1f` parameter.
+- Player and target can be in different test regions; the event uses the player's stable ID at
+  commit time. Moving immediately before commit changes the recorded ID, while acting outside all
+  volumes leaves the optional region ID absent.
 - Null interactors and disabled components are rejected.
 - A definition whose stable ID is blank is rejected.
 

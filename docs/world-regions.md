@@ -19,9 +19,11 @@ It is **not** streaming, procedural generation, a region graph, or ecology. Regi
 | `WorldRegionQueryResult` | Readonly struct | `Wildshift.World.Regions` | Result of a position query: status, chosen volume, and overlap count. |
 | `WorldRegionBox` | Readonly struct | `Wildshift.World.Regions` | Plain box geometry: containment and overlap (separating-axis test). |
 | `WorldRegionSetupValidator` | Static | `Wildshift.World.Regions` | Pure validation shared by the Inspector, runtime initialization, and tests. |
+| `IWorldRegionContext` | Interface | `Wildshift.World.Regions` | Read-only action-attribution seam implemented by the player integration; requests the authoritative stable ID at commit time. |
 
-`WorldStateService` (runtime state) and `PlayerActionEventRecorder` (event log) are unchanged. The registry holds no runtime
-state, and nothing here generates IDs.
+`WorldStateService` (runtime state) and `PlayerActionEventRecorder` (event log) remain separate. The registry holds no runtime
+state, and nothing here generates IDs. `PlayerRegionAssociation` composes the locator for player actions without adding new
+lookup rules; see [`player-region-integration.md`](player-region-integration.md).
 
 ## Stable IDs
 
@@ -180,6 +182,8 @@ Edit Mode tests live in `Assets/_Project/Tests/EditMode/`:
   list order; several volumes of one region; disabled volumes; transform position, rotation, and scale; and each invalid setup
   (missing catalog, missing or uncatalogued or invalid definitions, duplicate catalog IDs, unlisted, empty, duplicate, and
   zero-size volumes) making the locator unavailable.
+- `PlayerRegionAssociationTests.cs`: player entry, leave, direct cross-region movement, no repeated same-region updates,
+  delegation to the shared boundary rule, completion-time lookup, and explicit null attribution outside all regions.
 
 The Edit Mode suite runs in Unity 6000.3.24f1 with the command from [`world-state.md`](world-state.md):
 

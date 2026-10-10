@@ -35,6 +35,19 @@ The record is a `[Serializable]` plain C# class and copies its parameter collect
 so it is a safe data-transfer boundary. IDs, enums, and numbers only: persisting or moving these
 records never involves `GameObject` references, hierarchy paths, or scene object names.
 
+## Player region attribution
+
+Real sample-collection and environmental-scan producers resolve `RegionId` from the acting player's
+`PlayerRegionAssociation` at successful action commit time. That service delegates boundaries and
+overlaps to `WorldRegionLocator`; event producers do not derive IDs from target positions, display
+names, or hierarchy names. If the player is outside all registered regions, lookup is unavailable,
+or the integration is missing, the action is still recorded with the existing optional `RegionId`
+left null. No sentinel ID is fabricated. See
+[`player-region-integration.md`](player-region-integration.md).
+
+This required no event or save schema migration: `RegionId` was already optional and persisted.
+Recording still only appends a record and never mutates world, ecology, or faction state.
+
 ## The recorder
 
 `PlayerActionEventRecorder` follows the same Try-pattern as `WorldStateService`: `TryRecord` returns

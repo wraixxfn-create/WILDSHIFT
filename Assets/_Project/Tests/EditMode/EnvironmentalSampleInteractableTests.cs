@@ -1,9 +1,14 @@
 using System.Collections.Generic;
+using System.Text.RegularExpressions;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.TestTools;
 using Wildshift.Environment.Samples;
+using Wildshift.Player.Regions;
+using Wildshift.World;
 using Wildshift.World.Events;
+using Wildshift.World.Regions;
 
 namespace Wildshift.Tests
 {
@@ -19,6 +24,9 @@ namespace Wildshift.Tests
         private EnvironmentalSampleDefinition _definition;
         private PlayerActionEventRecorderHost _host;
         private GameObject _hostObject;
+        private WorldRegionTestObjects _regionObjects;
+        private PlayerRegionAssociation _regionAssociation;
+        private WorldRegionLocator _regionLocator;
 
         [SetUp]
         public void SetUp()
@@ -29,10 +37,33 @@ namespace Wildshift.Tests
             SetDefinitionField(_definition, "_interactPrompt", "Press E to collect sample");
             SetDefinitionField(_definition, "_collectedDescription", "A faint pearlescent scraping.");
 
-            _interactor = new GameObject("Sample Interactor Test");
+            _regionObjects = new WorldRegionTestObjects();
+            RegionDefinition west = _regionObjects.CreateDefinition("nacre/test/sample-west", "Sample West");
+            RegionDefinition east = _regionObjects.CreateDefinition("nacre/test/sample-east", "Sample East");
+            WorldRegionCatalog catalog = _regionObjects.CreateCatalog(west, east);
+            GameObject locatorRoot = _regionObjects.CreateObject("Sample Region Locator");
+            locatorRoot.SetActive(false);
+            _regionLocator = locatorRoot.AddComponent<WorldRegionLocator>();
+            WorldRegionTestObjects.SetLocatorCatalog(_regionLocator, catalog);
+            WorldRegionVolume westVolume = _regionObjects.CreateVolume(
+                locatorRoot.transform, west, new Vector3(-5f, 0f, 0f), new Vector3(10f, 10f, 10f), 0);
+            WorldRegionVolume eastVolume = _regionObjects.CreateVolume(
+                locatorRoot.transform, east, new Vector3(5f, 0f, 0f), new Vector3(10f, 10f, 10f), 0);
+            WorldRegionTestObjects.SetLocatorVolumes(_regionLocator, new[] { westVolume, eastVolume });
+            locatorRoot.SetActive(true);
 
+            _interactor = new GameObject("Sample Interactor Test");
+            _interactor.SetActive(false);
+            _interactor.transform.position = new Vector3(-5f, 0f, 0f);
+            _regionAssociation = _interactor.AddComponent<PlayerRegionAssociation>();
+            SetObjectReference(_regionAssociation, "_regionLocator", _regionLocator);
+            _interactor.SetActive(true);
+
+            // The target sits in east while the player starts in west. Events must follow the player,
+            // proving that target position and display names are not used as region identity.
             _sampleObject = new GameObject("Sample Target Test");
-            _sampleObject.transform.position = new Vector3(100f, 0f, 100f);
+            _sampleObject.SetActive(false);
+            _sampleObject.transform.position = new Vector3(5f, 0f, 0f);
             _sampleObject.AddComponent<BoxCollider>();
             _interactable = _sampleObject.AddComponent<EnvironmentalSampleInteractable>();
             SetObjectReference(_interactable, "_definition", _definition);
@@ -40,6 +71,7 @@ namespace Wildshift.Tests
             _hostObject = new GameObject("Event Recorder Host Test");
             _host = _hostObject.AddComponent<PlayerActionEventRecorderHost>();
             SetObjectReference(_interactable, "_eventRecorderHost", _host);
+            _sampleObject.SetActive(true);
         }
 
         [TearDown]
@@ -49,6 +81,7 @@ namespace Wildshift.Tests
             Object.DestroyImmediate(_interactor);
             Object.DestroyImmediate(_hostObject);
             Object.DestroyImmediate(_definition);
+            _regionObjects.DestroyAll();
         }
 
         [Test]
@@ -87,6 +120,8 @@ namespace Wildshift.Tests
 
             PlayerActionEvent evt = events[0];
             Assert.That(evt.EventType, Is.EqualTo(PlayerActionEventType.ResourceExtraction));
+            Assert.That(evt.RegionId, Is.EqualTo("nacre/test/sample-west"),
+                "Collection region follows the player, not the sample target in east.");
             Assert.That(evt.TargetId, Is.EqualTo("test/sample/soil-a"));
             Assert.That(evt.HasMagnitude, Is.True);
             Assert.That(evt.Magnitude, Is.EqualTo(1f));
@@ -101,6 +136,34 @@ namespace Wildshift.Tests
 
             Assert.That(collectedParamFound, Is.True,
                 "Collection event must carry a sample-collected=1 parameter.");
+        }
+
+        [Test]
+        public void CollectionUsesPlayersRegionAtSuccessfulCommitTime()
+        {
+            // The association was initialized in west. Move directly to east without manually refreshing,
+            // modelling an interaction that began before the boundary crossing and completed afterwards.
+            Assert.That(_regionAssociation.CurrentRegionId, Is.EqualTo("nacre/test/sample-west"));
+            _interactor.transform.position = new Vector3(5f, 0f, 0f);
+
+            _interactable.Interact(_interactor);
+
+            PlayerActionEvent evt = _host.Recorder.GetRecentEvents(1)[0];
+            Assert.That(evt.RegionId, Is.EqualTo("nacre/test/sample-east"));
+            Assert.That(evt.RegionId, Is.Not.EqualTo("Sample East"), "Display names are never event identifiers.");
+        }
+
+        [Test]
+        public void CollectionOutsideRegisteredRegionsRecordsNoRegionId()
+        {
+            _interactor.transform.position = new Vector3(20f, 0f, 0f);
+            LogAssert.Expect(LogType.Warning, new Regex("player is outside all registered region volumes"));
+
+            _interactable.Interact(_interactor);
+
+            PlayerActionEvent evt = _host.Recorder.GetRecentEvents(1)[0];
+            Assert.That(evt.HasRegionId, Is.False);
+            Assert.That(evt.RegionId, Is.Null, "Outside actions must not receive a fabricated region ID.");
         }
 
         [Test]
