@@ -133,7 +133,10 @@ The player controller has **no jump**. Every change in height is therefore eithe
   display name "Nacre Frontier Survey Site".
 - Catalog: `Assets/_Project/Data/WorldRegions/NacreWorldRegionCatalog.asset`, which lists that definition. A separate
   catalog keeps the Nacre world apart from the development test catalog `DevWorldRegionCatalog`, which is unchanged.
-- Locator: `WorldRegionLocator_Nacre` (under `NACRE_09_Region_Lookup`), with `Catalog` set to the Nacre catalog.
+- Locator: `WorldRegionLocator_Nacre` (under `NACRE_09_Region_Lookup`), with `Catalog` set to the Nacre catalog. Its
+  *Volumes* list has exactly one row, `Element 0` = `WorldRegionVolume_SurveySite`. If the Inspector shows an
+  `Element 1` of `None (World Region Volume)`, it is a stale row in the saved scene, not part of the committed setup; see
+  [Troubleshooting](world-regions.md#troubleshooting-volumes-entry-n-is-empty) to remove it.
 - Volume: `WorldRegionVolume_SurveySite`, one box. Local centre `(0, 7, 0)` and size `(40, 18, 40)` under the Nacre root.
   Its world extent is x 40 to 80, y −2 to 16, and z −20 to 20, which covers the whole footprint and the tallest object
   (landmark top 14.4 m).
@@ -342,8 +345,9 @@ Unity is not installed here, so the following checks were run on the generated f
 ### To run in the Unity Editor (open `Prototype` and check)
 
 1. Open `Prototype.unity`. The Console should show no missing-script, missing-prefab, or missing-reference warnings.
-2. Select `WorldRegionLocator_Nacre`, run **Validate Region Setup**, and check that no errors are logged. Select
-   `WorldRegionVolume_SurveySite` and confirm the green box covers the footprint.
+2. Select `WorldRegionLocator_Nacre`, run **Validate Region Setup**, and check that no errors or warnings are logged
+   (the *Volumes* list should show only `Element 0`). Select `WorldRegionVolume_SurveySite` and confirm the green box
+   covers the footprint.
 3. Enter Play Mode from the spawn. Check the start point, then walk the main route: strips, then the ramp, then the plateau
    and the spire plaza. Check the landmark is visible from the start.
 4. Take the optional gully north to the overlook. Check the gully width and that the camera does not clip the walls.

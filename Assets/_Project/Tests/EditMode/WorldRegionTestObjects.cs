@@ -93,6 +93,20 @@ namespace Wildshift.Tests
             serialized.ApplyModifiedPropertiesWithoutUndo();
         }
 
+        /// <summary>Reads the locator's Volumes list back through SerializedObject, including empty entries.</summary>
+        public static List<WorldRegionVolume> GetLocatorVolumes(WorldRegionLocator locator)
+        {
+            SerializedObject serialized = new SerializedObject(locator);
+            SerializedProperty list = serialized.FindProperty("_volumes");
+            List<WorldRegionVolume> volumes = new List<WorldRegionVolume>(list.arraySize);
+            for (int i = 0; i < list.arraySize; i++)
+            {
+                volumes.Add((WorldRegionVolume)list.GetArrayElementAtIndex(i).objectReferenceValue);
+            }
+
+            return volumes;
+        }
+
         /// <summary>Assigns the locator's Region Catalog.</summary>
         public static void SetLocatorCatalog(WorldRegionLocator locator, WorldRegionCatalog catalog)
         {

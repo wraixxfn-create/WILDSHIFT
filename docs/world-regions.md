@@ -60,7 +60,8 @@ The stable ID (`RegionDefinition.StableId`) is the region's identity in saves, e
    - Set *Local Center* and *Local Size*. The box is in the child's local space, so move, rotate, and scale the child to place
      it. Every size axis must be greater than zero.
    - Leave *Priority* at 0 unless this volume must win over an overlapping region (see below).
-   - Drag the child into the locator's *Volumes* list. A volume under the locator that is missing from that list is an error.
+   - Add a row to the locator's *Volumes* list with the list's **+** button and drag the child into it. A volume under the
+     locator that is missing from that list is an error. A row left empty is ignored and reported as a warning.
 5. **Check the setup.** Select the locator and choose **Validate Region Setup** from its component menu. Selected volumes draw
    a green wireframe box in the Scene view, so you can check their extent visually.
 6. **Enter Play Mode** and check the Console. A valid setup logs nothing. Errors are logged once at startup. Warnings, such
@@ -124,7 +125,7 @@ Validation is shared by the Inspector, runtime startup, and tests (`WorldRegionS
 
 - No Region Catalog assigned.
 - A catalog entry that is empty, has an invalid stable ID, or duplicates an ID (both assets are named).
-- A volume entry that is empty, or listed more than once.
+- A volume listed more than once.
 - A volume with no Region Definition, or a definition with an empty or invalid stable ID.
 - A volume whose definition is not **the registered asset** in the catalog. A different asset that only shares the ID is rejected.
 - A volume with a non-finite center, or with a size that is non-finite or zero or negative on any axis.
@@ -133,14 +134,33 @@ Validation is shared by the Inspector, runtime startup, and tests (`WorldRegionS
 **Warnings** (the locator stays available):
 
 - Volumes of different regions that overlap at equal priority.
+- An empty entry in the *Volumes* list. Queries skip it. It is only a warning because it ignores nothing that exists: a
+  volume that is still under the locator but missing from the list is reported as an error. See
+  [Troubleshooting](#troubleshooting-volumes-entry-n-is-empty).
 
 Errors and warnings are logged with `WildshiftLog`, so clicking a message selects the object to fix. A catalog logs its own
 errors when it is edited. A locator logs every problem it finds, including catalog and volume problems, when it is edited, when
 **Validate Region Setup** runs, and once at startup. The same message can therefore appear more than once in the Console
 (for example once when the scene is loaded in the Editor and once when Play starts); that is one problem reported twice,
-not two problems. Entry numbers in volume messages are zero-based: `entry 1` is the second row of the *Volumes* list.
+not two problems. Entry numbers in volume messages are zero-based and match the Inspector's labels: `entry 1` is `Element 1`, the second row of the *Volumes* list.
 Editing a region's own ID does not re-run the locator's validation until the locator is edited or the game starts. Use the
 context-menu validators after changing IDs.
+
+### Troubleshooting: `Volumes entry N is empty`
+
+The locator's *Volumes* list has a row with nothing assigned (the Inspector shows `None (World Region Volume)`). Every query
+skips it and the locator stays available, but it is reported as a warning until the row is removed or filled in. It usually
+appears after a listed volume was deleted, or after a row was added with the list's **+** button and never filled in. It is
+stored in the scene file, so it exists only in the scene that was saved with it.
+
+To clean it up, do either of these in the Editor:
+
+- Open the *WorldRegionLocator* component menu (right-click its header, or use its ⋮ button) and choose
+  **Remove Empty Volume Entries**. This removes every empty row in one undoable step.
+- Select the row `Element N` in the *Volumes* list and click the list's **−** button.
+
+Then save the scene (Ctrl+S). The change is made in the open scene, so it persists only once the scene is saved.
+**Validate Region Setup** should then log that the setup is valid.
 
 ## Relationship to world state
 
@@ -182,8 +202,10 @@ Edit Mode tests live in `Assets/_Project/Tests/EditMode/`:
   boxes contain nothing; overlap, touching-face, and diagonal separating-axis cases.
 - `WorldRegionLocatorTests.cs`: position queries inside, outside, and on boundaries; priority and tie resolution, independent of
   list order; several volumes of one region; disabled volumes; transform position, rotation, and scale; and each invalid setup
-  (missing catalog, missing or uncatalogued or invalid definitions, duplicate catalog IDs, unlisted, empty, duplicate, and
-  zero-size volumes) making the locator unavailable.
+  (missing catalog, missing or uncatalogued or invalid definitions, duplicate catalog IDs, unlisted, duplicate, and
+  zero-size volumes) making the locator unavailable. An empty *Volumes* entry is tested separately: it is ignored with a
+  warning, the locator stays available, it never hides a volume that is missing from the list, and
+  **Remove Empty Volume Entries** drops only the empty rows and keeps the order of the others.
 - `PlayerRegionAssociationTests.cs`: player entry, leave, direct cross-region movement, no repeated same-region updates,
   delegation to the shared boundary rule, completion-time lookup, and explicit null attribution outside all regions.
 

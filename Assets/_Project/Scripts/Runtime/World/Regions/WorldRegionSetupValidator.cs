@@ -11,12 +11,16 @@ namespace Wildshift.World.Regions
     /// </summary>
     /// <remarks>
     /// <para><b>Errors</b> make the setup invalid and the locator unavailable. They cover: a missing catalog; an
-    /// invalid or duplicate catalog entry; an empty volume entry or a volume listed twice; a missing, invalid, or
-    /// uncatalogued region definition; invalid volume bounds; and a volume under the locator that is not in its list
-    /// (it would otherwise be silently ignored).</para>
-    /// <para><b>Warnings</b> do not make the setup invalid. They report two volumes of different regions that overlap
-    /// with equal priority. Those positions are still resolved deterministically by stable ID order, but that is
-    /// usually not what the author intended.</para>
+    /// invalid or duplicate catalog entry; a volume listed twice; a missing, invalid, or uncatalogued region
+    /// definition; invalid volume bounds; and a volume under the locator that is not in its list (it would otherwise
+    /// be silently ignored).</para>
+    /// <para><b>Warnings</b> do not make the setup invalid. They report an empty entry in the Volumes list, and two
+    /// volumes of different regions that overlap with equal priority. Those positions are still resolved
+    /// deterministically by stable ID order, but that is usually not what the author intended.</para>
+    /// <para>An empty entry is only a warning because it ignores nothing that exists: queries skip it, and a volume
+    /// that is still under the locator but missing from the list is reported as an error. A stale row (left behind by
+    /// deleting a volume, or by adding a row in the Inspector and never filling it in) is clutter to remove, not a
+    /// reason to switch region lookup off for the whole scene.</para>
     /// </remarks>
     public static class WorldRegionSetupValidator
     {
@@ -94,7 +98,10 @@ namespace Wildshift.World.Regions
             WorldRegionVolume volume = volumes[index];
             if (volume == null)
             {
-                errors.Add("Volumes entry " + index + " is empty. Assign a WorldRegionVolume or remove the entry.");
+                // Entry numbers are zero-based and match the "Element N" labels in the Inspector list.
+                warnings.Add("Volumes entry " + index + " is empty (Element " + index + " in the Inspector) and is ignored. " +
+                             "Assign a WorldRegionVolume or remove the entry; the component menu command " +
+                             "'Remove Empty Volume Entries' removes every empty entry.");
                 return;
             }
 
