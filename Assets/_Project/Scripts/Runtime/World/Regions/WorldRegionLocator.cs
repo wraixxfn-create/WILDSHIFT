@@ -21,6 +21,9 @@ namespace Wildshift.World.Regions
     /// hierarchy or list order. Overlap is reported through <see cref="WorldRegionQueryResult.IsOverlapping"/>.</description></item>
     /// <item><description>Several volumes of the same region count as one region.</description></item>
     /// <item><description>Disabled volumes and volumes on inactive GameObjects are ignored.</description></item>
+    /// <item><description>Empty entries in the Volumes list are skipped and reported as a warning. They do not make the
+    /// setup invalid, because they ignore nothing that exists. The <b>Remove Empty Volume Entries</b> context-menu
+    /// command clears them.</description></item>
     /// <item><description>If the setup is invalid, every query returns <see cref="WorldRegionQueryStatus.Unavailable"/>. The
     /// setup is validated once when initialized (Awake), and the errors are logged to the Console. Queries never log.</description></item>
     /// </list>
@@ -36,7 +39,8 @@ namespace Wildshift.World.Regions
         private WorldRegionCatalog _catalog;
 
         [SerializeField, Tooltip("Every WorldRegionVolume that belongs to this locator. Volumes placed under this object " +
-                                 "but missing from this list are reported as errors.")]
+                                 "but missing from this list are reported as errors. Empty entries are ignored and " +
+                                 "reported as warnings; remove them with the component's 'Remove Empty Volume Entries' command.")]
         private List<WorldRegionVolume> _volumes = new List<WorldRegionVolume>();
 
         private readonly List<string> _validationErrors = new List<string>();
@@ -156,6 +160,50 @@ namespace Wildshift.World.Regions
                 WildshiftLog.Info($"World region setup '{name}' is valid.", this);
             }
         }
+
+        /// <summary>
+        /// Removes every empty entry from the Volumes list, keeps the order of the others, and returns how many were
+        /// removed. Queries already skip empty entries, so this only tidies stale rows (for example after deleting a
+        /// volume). It edits authored data, so it is for editor tooling and tests rather than gameplay code. Call
+        /// <see cref="Initialize"/> afterwards to refresh <see cref="ValidationWarnings"/>.
+        /// </summary>
+        internal int RemoveEmptyVolumeEntries()
+        {
+            return _volumes.RemoveAll(volume => volume == null);
+        }
+
+#if UNITY_EDITOR
+        /// <summary>
+        /// Editor-only: removes every empty entry from the Volumes list as one undoable step and marks the scene as
+        /// modified, so saving the scene keeps the change.
+        /// </summary>
+        [ContextMenu("Remove Empty Volume Entries")]
+        private void RemoveEmptyVolumeEntriesFromContextMenu()
+        {
+            if (Application.isPlaying)
+            {
+                WildshiftLog.Warning($"World region locator '{name}': exit Play Mode before removing empty Volumes " +
+                                     "entries, because changes made in Play Mode are discarded when it stops.", this);
+                return;
+            }
+
+            if (!_volumes.Exists(volume => volume == null))
+            {
+                WildshiftLog.Info($"World region locator '{name}' has no empty Volumes entries.", this);
+                return;
+            }
+
+            // RecordObject makes the change undoable; SetDirty flags the component, and the scene that holds it, as
+            // modified so that saving the scene keeps the change.
+            UnityEditor.Undo.RecordObject(this, "Remove Empty Volume Entries");
+            int removed = RemoveEmptyVolumeEntries();
+            UnityEditor.EditorUtility.SetDirty(this);
+
+            string noun = removed == 1 ? "entry" : "entries";
+            WildshiftLog.Info($"Removed {removed} empty Volumes {noun} from world region locator '{name}'. " +
+                              "Save the scene to keep the change.", this);
+        }
+#endif
 
         private void EnsureInitialized()
         {

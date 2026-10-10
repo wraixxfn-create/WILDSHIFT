@@ -302,13 +302,59 @@ namespace Wildshift.Tests
         }
 
         [Test]
-        public void EmptyEntryInTheVolumesListIsRejected()
+        public void EmptyEntryInTheVolumesListIsIgnoredAndReportedAsAWarning()
         {
             WorldRegionLocator locator = CreateDefaultLocator();
-            WorldRegionTestObjects.SetLocatorVolumes(locator, new List<WorldRegionVolume> { null });
+            WorldRegionVolume north = FindVolume(locator, _north);
+            WorldRegionVolume south = FindVolume(locator, _south);
+            WorldRegionTestObjects.SetLocatorVolumes(locator, new List<WorldRegionVolume> { north, null, south });
+
+            Assert.That(locator.Initialize(), Is.True, string.Join("\n", locator.ValidationErrors));
+            Assert.That(locator.IsAvailable, Is.True, "A stale empty row must not switch region lookup off.");
+            Assert.That(locator.ValidationErrors, Is.Empty);
+            Assert.That(locator.ValidationWarnings, Has.Count.EqualTo(1));
+            Assert.That(locator.ValidationWarnings[0],
+                Does.Contain("Volumes entry 1 is empty").And.Contain("Element 1").And.Contain("Remove Empty Volume Entries"));
+            Assert.That(locator.FindRegionAt(new Vector3(-2f, 0f, 0f)).RegionId, Is.EqualTo(NorthId));
+            Assert.That(locator.FindRegionAt(new Vector3(12f, 0f, 0f)).RegionId, Is.EqualTo(SouthId));
+        }
+
+        [Test]
+        public void EmptyEntryDoesNotHideAVolumeThatIsMissingFromTheList()
+        {
+            WorldRegionLocator locator = CreateDefaultLocator();
+            WorldRegionVolume north = FindVolume(locator, _north);
+
+            // The south volume still sits under the locator, but its list entry has become an empty row.
+            WorldRegionTestObjects.SetLocatorVolumes(locator, new List<WorldRegionVolume> { north, null });
 
             Assert.That(locator.Initialize(), Is.False);
-            Assert.That(string.Join("\n", locator.ValidationErrors), Does.Contain("is empty"));
+            Assert.That(string.Join("\n", locator.ValidationErrors), Does.Contain("not in its Volumes list"));
+            Assert.That(string.Join("\n", locator.ValidationWarnings), Does.Contain("Volumes entry 1 is empty"));
+            Assert.That(locator.FindRegionAt(Vector3.zero).Status, Is.EqualTo(WorldRegionQueryStatus.Unavailable));
+        }
+
+        [Test]
+        public void RemoveEmptyVolumeEntriesDropsOnlyTheEmptyRowsAndKeepsTheOrder()
+        {
+            WorldRegionLocator locator = CreateDefaultLocator();
+            WorldRegionVolume north = FindVolume(locator, _north);
+            WorldRegionVolume south = FindVolume(locator, _south);
+            WorldRegionTestObjects.SetLocatorVolumes(locator,
+                new List<WorldRegionVolume> { null, south, null, north, null });
+            Assert.That(locator.Initialize(), Is.True, string.Join("\n", locator.ValidationErrors));
+            Assert.That(locator.ValidationWarnings, Has.Count.EqualTo(3));
+
+            Assert.That(locator.RemoveEmptyVolumeEntries(), Is.EqualTo(3));
+
+            List<WorldRegionVolume> remaining = WorldRegionTestObjects.GetLocatorVolumes(locator);
+            Assert.That(remaining, Has.Count.EqualTo(2));
+            Assert.That(remaining[0], Is.SameAs(south));
+            Assert.That(remaining[1], Is.SameAs(north));
+            Assert.That(locator.Initialize(), Is.True, string.Join("\n", locator.ValidationErrors));
+            Assert.That(locator.ValidationWarnings, Is.Empty);
+            Assert.That(locator.FindRegionAt(new Vector3(-2f, 0f, 0f)).RegionId, Is.EqualTo(NorthId));
+            Assert.That(locator.RemoveEmptyVolumeEntries(), Is.EqualTo(0), "A second call has nothing left to remove.");
         }
 
         [Test]

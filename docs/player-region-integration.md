@@ -118,6 +118,9 @@ Manual Editor check in `Prototype.unity`:
    actions on either side carry the corresponding stable ID.
 4. Temporarily overlap two test volumes with different priorities and confirm association agrees
    with `WorldRegionLocator` (higher priority, then stable-ID tie-break), rather than introducing a
-   different answer.
+   different answer. When you are done, delete the temporary volumes and run **Remove Empty Volume
+   Entries** from the locator's component menu, so the rows they used do not stay behind as empty
+   *Volumes* entries in the saved scene (see the troubleshooting note in
+   [`world-regions.md`](world-regions.md#troubleshooting-volumes-entry-n-is-empty)).
 
 Unity 6000.3.24f1 is required to run the Edit Mode suite.
