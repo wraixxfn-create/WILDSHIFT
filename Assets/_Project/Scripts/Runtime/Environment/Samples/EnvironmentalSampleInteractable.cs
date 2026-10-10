@@ -4,6 +4,7 @@ using Wildshift.Interaction;
 using Wildshift.World.Clock;
 using Wildshift.World.Events;
 using Wildshift.World.Regions;
+using Wildshift.UI;
 
 namespace Wildshift.Environment.Samples
 {
