@@ -134,6 +134,13 @@ namespace Wildshift.World.Regions
         private void OnValidate()
         {
             // Editor feedback only: validate the current inspector values without changing the runtime index.
+            // In Play mode, Initialize (from Awake or the first query) logs the same messages once, so
+            // OnValidate stays quiet then to avoid reporting the same problem multiple times per Play session.
+            if (Application.isPlaying)
+            {
+                return;
+            }
+
             List<string> errors = new List<string>();
             List<string> warnings = new List<string>();
             WorldRegionSetupValidator.Validate(_catalog, _volumes, transform, errors, warnings, out _);
