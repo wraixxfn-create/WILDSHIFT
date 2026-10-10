@@ -136,7 +136,9 @@ Validation is shared by the Inspector, runtime startup, and tests (`WorldRegionS
 
 Errors and warnings are logged with `WildshiftLog`, so clicking a message selects the object to fix. A catalog logs its own
 errors when it is edited. A locator logs every problem it finds, including catalog and volume problems, when it is edited, when
-**Validate Region Setup** runs, and once at startup.
+**Validate Region Setup** runs, and once at startup. The same message can therefore appear more than once in the Console
+(for example once when the scene is loaded in the Editor and once when Play starts); that is one problem reported twice,
+not two problems. Entry numbers in volume messages are zero-based: `entry 1` is the second row of the *Volumes* list.
 Editing a region's own ID does not re-run the locator's validation until the locator is edited or the game starts. Use the
 context-menu validators after changing IDs.
 
