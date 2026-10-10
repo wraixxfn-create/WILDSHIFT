@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
 using UnityEngine;
@@ -24,13 +26,21 @@ namespace Wildshift.Persistence
 
         private const string BackupSuffix = ".bak";
         private const string TemporarySuffix = ".tmp";
+        private const string UnusablePrefix = ".unusable-";
 
         // UTF-8 without a byte-order mark keeps the file readable by external tools and by JsonUtility.
         private static readonly Encoding SaveEncoding = new UTF8Encoding(false);
 
+        // One lock object per save file path, shared by every service instance in this process, so two
+        // services that point at the same file cannot interleave their reads and writes.
+        private static readonly object FileLockTableGate = new object();
+        private static readonly Dictionary<string, object> FileLocks =
+            new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
+
         private readonly string _saveDirectory;
         private readonly string _saveFilePath;
         private readonly string _backupFilePath;
+        private readonly object _fileLock;
 
         /// <summary>
         /// Creates a service for one save file. Passing no directory uses
@@ -65,6 +75,7 @@ namespace Wildshift.Persistence
             _saveDirectory = directory;
             _saveFilePath = Path.Combine(_saveDirectory, fileName);
             _backupFilePath = _saveFilePath + BackupSuffix;
+            _fileLock = GetFileLock(Path.GetFullPath(_saveFilePath));
         }
 
         /// <summary>
@@ -94,10 +105,49 @@ namespace Wildshift.Persistence
         /// Writes one save. The data is validated first, then written to a temporary file that is
         /// moved into place, so an interrupted or rejected write can never leave a half-written file
         /// where the previous good save was. The previous save is kept as a backup so a corrupted
-        /// primary file can still be recovered from. Success and failure are logged for development;
-        /// the returned status is what gameplay UI should surface.
+        /// primary file can still be recovered from. An existing primary that is unusable is moved
+        /// aside under a unique name rather than replaced. Saves and loads on the same file are
+        /// serialized. Success and failure are logged for development; the returned status is what
+        /// gameplay UI should surface.
         /// </summary>
         public SaveLoadStatus TrySave(GameSaveData saveData, out string error)
+        {
+            lock (_fileLock)
+            {
+                return TrySaveUnlocked(saveData, out error);
+            }
+        }
+
+        /// <summary>
+        /// Reads the primary save file, falling back to the previous save kept as a backup when the
+        /// primary file is missing or unusable. A file that fails to parse, fails validation, or
+        /// declares an unsupported schema version is reported through the returned status and is left
+        /// exactly as it was: loading never overwrites, repairs, or deletes a save. Saves and loads on
+        /// the same file are serialized.
+        /// </summary>
+        public SaveLoadStatus TryLoad(out GameSaveData saveData, out string error)
+        {
+            lock (_fileLock)
+            {
+                return TryLoadUnlocked(out saveData, out error);
+            }
+        }
+
+        private static object GetFileLock(string fullPath)
+        {
+            lock (FileLockTableGate)
+            {
+                if (!FileLocks.TryGetValue(fullPath, out object fileLock))
+                {
+                    fileLock = new object();
+                    FileLocks.Add(fullPath, fileLock);
+                }
+
+                return fileLock;
+            }
+        }
+
+        private SaveLoadStatus TrySaveUnlocked(GameSaveData saveData, out string error)
         {
             if (saveData == null)
             {
@@ -129,13 +179,7 @@ namespace Wildshift.Persistence
             return SaveLoadStatus.Success;
         }
 
-        /// <summary>
-        /// Reads the primary save file, falling back to the previous save kept as a backup when the
-        /// primary file is missing or unusable. A file that fails to parse, fails validation, or
-        /// declares an unsupported schema version is reported through the returned status and is left
-        /// exactly as it was: loading never overwrites, repairs, or deletes a save.
-        /// </summary>
-        public SaveLoadStatus TryLoad(out GameSaveData saveData, out string error)
+        private SaveLoadStatus TryLoadUnlocked(out GameSaveData saveData, out string error)
         {
             saveData = null;
 
@@ -273,15 +317,29 @@ namespace Wildshift.Persistence
                 // Full write to a temporary file first: if anything fails here the previous save is untouched.
                 File.WriteAllText(temporaryPath, json, SaveEncoding);
 
-                // Rotate the previous save into the backup slot so it can be recovered later.
-                if (File.Exists(_backupFilePath))
-                {
-                    File.Delete(_backupFilePath);
-                }
-
                 if (File.Exists(_saveFilePath))
                 {
-                    File.Move(_saveFilePath, _backupFilePath);
+                    if (TryReadSaveFile(_saveFilePath, out _, out _) == SaveLoadStatus.Success)
+                    {
+                        // A usable primary becomes the backup, replacing the older backup.
+                        if (File.Exists(_backupFilePath))
+                        {
+                            File.Delete(_backupFilePath);
+                        }
+
+                        File.Move(_saveFilePath, _backupFilePath);
+                    }
+                    else
+                    {
+                        // An unusable primary (corrupt, truncated, or from another version) is never deleted
+                        // or replaced. It is moved aside under a unique name, and the existing backup, which
+                        // is the last save that was known to be good, stays where it is.
+                        string preservedPath = FindUnusedUnusablePath();
+                        File.Move(_saveFilePath, preservedPath);
+                        WildshiftLog.Warning(
+                            $"The existing save file was not usable, so it was kept unchanged as '{preservedPath}' " +
+                            "before the new save was written. The previous good save remains the backup.");
+                    }
                 }
 
                 // A rename inside one directory is the smallest possible window for an interrupted write.
@@ -314,6 +372,18 @@ namespace Wildshift.Persistence
             {
                 TryDeleteTemporaryFile(temporaryPath);
             }
+        }
+
+        private string FindUnusedUnusablePath()
+        {
+            string stamp = DateTime.UtcNow.ToString("yyyyMMdd'T'HHmmssfff'Z'", CultureInfo.InvariantCulture);
+            string candidate = _saveFilePath + UnusablePrefix + stamp;
+            for (int suffix = 2; File.Exists(candidate); suffix++)
+            {
+                candidate = _saveFilePath + UnusablePrefix + stamp + "-" + suffix.ToString(CultureInfo.InvariantCulture);
+            }
+
+            return candidate;
         }
 
         private static void TryDeleteTemporaryFile(string temporaryPath)

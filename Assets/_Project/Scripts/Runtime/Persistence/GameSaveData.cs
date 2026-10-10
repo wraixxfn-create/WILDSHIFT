@@ -3,14 +3,16 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Globalization;
 using UnityEngine;
+using Wildshift.World.Clock;
 using Wildshift.World.Events;
+using Wildshift.World.Regions;
 
 namespace Wildshift.Persistence
 {
     /// <summary>
     /// Versioned snapshot of the small amount of prototype state WILDSHIFT can save today: the
-    /// player's position and orientation, the registered region state, and a bounded slice of the
-    /// player-action event history. This is a data-transfer object only. It never holds
+    /// player's position, orientation, and region, the registered region state, the elapsed world time,
+    /// the environmental samples already collected, and a bounded slice of the player-action event history. This is a data-transfer object only. It never holds
     /// <see cref="GameObject"/> references, components, hierarchy paths, scene names, or whole
     /// scenes, and it does not touch the disk: <see cref="LocalSaveService"/> owns file access and
     /// <see cref="GameSaveMapper"/> owns translation to and from live runtime state.
@@ -41,15 +43,27 @@ namespace Wildshift.Persistence
         /// <summary>Hard ceiling on stored region entries accepted by validation.</summary>
         public const int MaxSupportedRegions = 1024;
 
+        /// <summary>Hard ceiling on collected-sample entries accepted by validation.</summary>
+        public const int MaxSupportedCollectedSamples = 256;
+
+        /// <summary>
+        /// Largest elapsed world time, in seconds, that a save may declare. It is the world clock's own
+        /// ceiling, so a restored clock can never be asked to represent a time it cannot hold.
+        /// </summary>
+        public const double MaxSupportedElapsedWorldTime = WorldClock.MaxElapsedTicks / (double)WorldClock.TicksPerSecond;
+
         [SerializeField] private int _schemaVersion;
         [SerializeField] private string _savedAtUtc;
         [SerializeField] private string _gameVersion;
         [SerializeField] private PlayerSaveData _player;
         [SerializeField] private RegionSaveData[] _regions;
         [SerializeField] private PlayerActionEvent[] _worldEvents;
+        [SerializeField] private double _elapsedWorldTime;
+        [SerializeField] private string[] _collectedSampleIds;
 
         [NonSerialized] private ReadOnlyCollection<RegionSaveData> _regionView;
         [NonSerialized] private ReadOnlyCollection<PlayerActionEvent> _worldEventView;
+        [NonSerialized] private ReadOnlyCollection<string> _collectedSampleView;
 
         /// <summary>
         /// Creates a save snapshot. Field validation happens in <see cref="TryValidate"/>, so callers
@@ -61,7 +75,9 @@ namespace Wildshift.Persistence
             string gameVersion,
             PlayerSaveData player,
             IReadOnlyList<RegionSaveData> regions,
-            IReadOnlyList<PlayerActionEvent> worldEvents)
+            IReadOnlyList<PlayerActionEvent> worldEvents,
+            double elapsedWorldTime = 0d,
+            IReadOnlyList<string> collectedSampleIds = null)
         {
             _schemaVersion = schemaVersion;
             _savedAtUtc = savedAtUtc;
@@ -69,6 +85,8 @@ namespace Wildshift.Persistence
             _player = player;
             _regions = Copy(regions);
             _worldEvents = Copy(worldEvents);
+            _elapsedWorldTime = elapsedWorldTime;
+            _collectedSampleIds = Copy(collectedSampleIds);
         }
 
         /// <summary>Parameterless constructor for Unity serialization only; do not call directly.</summary>
@@ -99,6 +117,19 @@ namespace Wildshift.Persistence
 
         /// <summary>Read-only, possibly empty world events in chronological order (oldest first); never null.</summary>
         public IReadOnlyList<PlayerActionEvent> WorldEvents => View(_worldEvents, ref _worldEventView);
+
+        /// <summary>
+        /// Elapsed world time in seconds when the save was written. A load restores the world clock to this
+        /// value (or to the newest saved event, if that is later), so new events never predate restored ones.
+        /// Optional: an absent value reads as zero.
+        /// </summary>
+        public double ElapsedWorldTime => _elapsedWorldTime;
+
+        /// <summary>
+        /// Stable IDs of the environmental samples the player had collected, ordered ordinally and unique.
+        /// Optional: an absent value means none. Read-only; never null.
+        /// </summary>
+        public IReadOnlyList<string> CollectedSampleIds => View(_collectedSampleIds, ref _collectedSampleView);
 
         /// <summary>True when this save declares a schema version this build can read.</summary>
         public bool HasSupportedSchemaVersion => IsSupportedSchemaVersion(_schemaVersion);
@@ -169,6 +200,73 @@ namespace Wildshift.Persistence
             if (!TryValidateWorldEvents(out error))
             {
                 return false;
+            }
+
+            if (!TryValidateElapsedWorldTime(out error))
+            {
+                return false;
+            }
+
+            if (!TryValidateCollectedSamples(out error))
+            {
+                return false;
+            }
+
+            error = null;
+            return true;
+        }
+
+        private bool TryValidateElapsedWorldTime(out string error)
+        {
+            if (double.IsNaN(_elapsedWorldTime) || double.IsInfinity(_elapsedWorldTime) ||
+                _elapsedWorldTime < 0d || _elapsedWorldTime > MaxSupportedElapsedWorldTime)
+            {
+                error = $"the saved world time {_elapsedWorldTime} is not a finite time between 0 and " +
+                        $"{MaxSupportedElapsedWorldTime} seconds";
+                return false;
+            }
+
+            error = null;
+            return true;
+        }
+
+        private bool TryValidateCollectedSamples(out string error)
+        {
+            // An absent collection is valid: older files and files with no collected samples both read as none.
+            if (_collectedSampleIds == null)
+            {
+                error = null;
+                return true;
+            }
+
+            if (_collectedSampleIds.Length > MaxSupportedCollectedSamples)
+            {
+                error = $"the save lists {_collectedSampleIds.Length} collected samples; " +
+                        $"at most {MaxSupportedCollectedSamples} are supported";
+                return false;
+            }
+
+            HashSet<string> seenIds = new HashSet<string>(StringComparer.Ordinal);
+            for (int index = 0; index < _collectedSampleIds.Length; index++)
+            {
+                string sampleId = _collectedSampleIds[index];
+                if (sampleId == null)
+                {
+                    error = $"collected sample entry {index} in the save is null";
+                    return false;
+                }
+
+                if (!WorldRegionIdRules.TryValidate(sampleId, out string idError))
+                {
+                    error = $"collected sample entry {index} in the save is not usable: {idError}";
+                    return false;
+                }
+
+                if (!seenIds.Add(sampleId))
+                {
+                    error = $"the save lists sample '{sampleId}' as collected more than once";
+                    return false;
+                }
             }
 
             error = null;

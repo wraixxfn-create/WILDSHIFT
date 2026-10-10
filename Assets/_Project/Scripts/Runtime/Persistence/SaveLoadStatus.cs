@@ -51,5 +51,11 @@ namespace Wildshift.Persistence
 
         /// <summary>The save could not be written to disk. Any previous save is still intact.</summary>
         WriteFailed = 8,
+
+        /// <summary>
+        /// The request was refused because another save or load is still running. The refused request
+        /// read and wrote nothing, so the caller can try again once the running one has finished.
+        /// </summary>
+        OperationInProgress = 9,
     }
 }

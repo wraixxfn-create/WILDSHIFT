@@ -11,12 +11,15 @@ world, ecology, or faction state on its own; loading restores data into the syst
 | Type | Namespace | Responsibility |
 | --- | --- | --- |
 | `GameSaveData` | `Wildshift.Persistence` | Versioned, serializable save model (the data contract). Validates its own contents; touches no disk. |
-| `PlayerSaveData` | `Wildshift.Persistence` | Saved player position and orientation as plain values. |
+| `PlayerSaveData` | `Wildshift.Persistence` | Saved player position, orientation, and optional region ID as plain values. |
 | `RegionSaveData` | `Wildshift.Persistence` | Saved state of one region, keyed by stable region ID. |
 | `SaveLoadStatus` | `Wildshift.Persistence` | Enum describing the outcome of one save or load. This, not a path, is what UI may show. |
 | `LocalSaveService` | `Wildshift.Persistence` | Owns the file: where it lives, how it is written safely, which versions are readable, and what is logged. |
 | `GameSaveMapper` | `Wildshift.Persistence` | The only place that knows both sides: captures live runtime state into `GameSaveData` and applies a save back through the owning systems. |
 | `SaveWriteThrottle` | `Wildshift.Persistence` | Policy that keeps periodic saving off the per-frame path. Performs no I/O. |
+| `SaveRestorePolicy` | `Wildshift.Persistence` | Pure decisions made on load: how a saved region claim is checked against the registry, when a saved pose is replaced by the safe spawn, and which clock time is restored. No Unity scene access. |
+| `SaveOperationResult` | `Wildshift.Persistence` | Outcome of one explicit save or load request: a status, a player-presentable message, and any recovery notes. Holds no file path. |
+| `PrototypeSaveController` | `Wildshift.Persistence` | Scene composition root for the Nacre prototype. It owns the save service and the live world state, captures and restores the scene, and provides the development-only keys. See [`prototype-save-load.md`](prototype-save-load.md). |
 
 The data model and the service are deliberately separate. `GameSaveData` is pure data plus
 validation; `LocalSaveService` is pure storage; `GameSaveMapper` is the translation layer. Nothing in
@@ -57,8 +60,11 @@ are the serialized field names, so they carry a leading underscore. Schema versi
     "_gameVersion": "0.1.0",
     "_player": {
         "_position": { "x": 1.5, "y": 2.0, "z": -3.25 },
-        "_orientation": { "x": 0.0, "y": 0.7071068, "z": 0.0, "w": 0.7071068 }
+        "_orientation": { "x": 0.0, "y": 0.7071068, "z": 0.0, "w": 0.7071068 },
+        "_regionId": "nacre/frontier/survey-site"
     },
+    "_elapsedWorldTime": 12.5,
+    "_collectedSampleIds": [ "nacre/sample/disturbed-soil-a" ],
     "_regions": [
         { "_stableId": "nacre/basin/central", "_testValue": 7 },
         { "_stableId": "nacre/coast/north", "_testValue": 41 }
@@ -95,6 +101,9 @@ are the serialized field names, so they carry a leading underscore. Schema versi
 | `_gameVersion` | no | `Application.version` at save time, used to explain an incompatible save. |
 | `_player._position` | yes | World-space `Vector3`. All components must be finite. |
 | `_player._orientation` | yes | World-space `Quaternion`. Must be finite and a real rotation (an all-zero quaternion is rejected rather than silently applied). |
+| `_player._regionId` | no | Stable ID of the region the player was in, or absent/`null` when outside all regions. Format-checked on save and load. Whether it names a region **this build registers** is checked at load time, not in the file (see Versioning). Added in Prompt 20. |
+| `_elapsedWorldTime` | no | Elapsed world time in seconds from the scene's `WorldClock`, finite, from 0 up to `GameSaveData.MaxSupportedElapsedWorldTime`. An absent value reads as 0. Added in Prompt 20. |
+| `_collectedSampleIds[]` | no | Stable IDs of environmental samples the player had collected, unique and sorted. An absent value means none. Authored data (name, prompt) is not saved. Added in Prompt 20. |
 | `_regions[]` | yes (may be empty) | One entry per registered region, ordered by stable ID. Authored data (display label, initial value) is **not** saved: it belongs to the `RegionDefinition` asset. |
 | `_regions[]._stableId` | yes | Same vocabulary as `RegionDefinition.StableId`; non-blank and unique within the save. |
 | `_regions[]._testValue` | yes | The foundation-only mutable region value from `RegionState.TestValue`. |
@@ -104,10 +113,29 @@ are the serialized field names, so they carry a leading underscore. Schema versi
 Only stable IDs, enums, numbers, and small fixed-size blocks are stored. No `GameObject` references,
 no hierarchy paths, no scene names, no components, and no whole scenes.
 
+**Runtime state is separate from authored assets.** Every saved value is either a stable ID or a number
+that describes runtime state. Nothing is written into `RegionDefinition`, `EnvironmentalSampleDefinition`,
+or any other `ScriptableObject`. Loading restores runtime objects only: `WorldStateService` values,
+the event recorder's log, the world clock's time, the sample's private collected flag, and the player's
+transform. The assets are read, never changed.
+
 ## Versioning and compatibility
 
 `GameSaveData.CurrentSchemaVersion` is the version this build writes;
 `GameSaveData.OldestSupportedSchemaVersion` is the oldest one it can still read. Both are `1` today.
+
+**Prompt 20 changed schema version 1 additively, and the version was not bumped.** It added
+`_player._regionId`, `_elapsedWorldTime`, and `_collectedSampleIds`, and no existing field was renamed,
+retyped, or given a new meaning.
+
+**Migration: none required.** A version-1 file written before Prompt 20 reads as: outside all regions,
+elapsed time 0 (raised to the newest saved event, if there is one), and no collected samples. Those are the
+values the game had before these fields existed, so nothing is reinterpreted. Old files are not rewritten.
+Covered by `GameSaveSessionFieldsTests.AVersionOneFileWrittenBeforeTheFieldsExistedStillLoadsWithSafeDefaults`.
+
+A saved region ID is a claim, not a fact. Its *format* is validated when the file is read. Whether this
+build registers that region is checked when the save is loaded, and an unregistered ID is reported and
+ignored rather than rejected, because a renamed or removed region must not make the whole save unloadable.
 
 On load the version is checked **before** content validation. A save outside the supported range
 returns `SaveLoadStatus.IncompatibleVersion` with an explanatory error, and its bytes are deliberately
@@ -144,6 +172,10 @@ disk. It rejects:
 - an unsupported `_schemaVersion`;
 - a missing or unparseable `_savedAtUtc`;
 - a missing player block, non-finite position or orientation, or a zero-length (unset) orientation;
+- a player region ID that is present but empty or contains whitespace or control characters;
+- a non-finite, negative, or oversized `_elapsedWorldTime`;
+- more than `MaxSupportedCollectedSamples` (256) collected-sample IDs, a null entry, a blank or malformed
+  ID, or the same ID twice;
 - null region or world-event collections, too many of either, null entries, blank stable IDs, or the
   same stable ID twice;
 - any world event a live `PlayerActionEventRecorder` would reject. Validation replays the stored
@@ -163,12 +195,13 @@ failures).
 | `Success` | Saved, or the primary save loaded. | Save written, or nothing written for a load. |
 | `NoSaveFile` | No save exists yet. Normal on a first run; logged at info level. | Nothing written. |
 | `RecoveredFromBackup` | The primary file was missing or unusable, so the previous save was loaded. Logged as a warning. | Nothing written. |
-| `InvalidArgument` | Null save data. | Nothing written. |
+| `InvalidArgument` | Null save data. A prototype controller that is not wired up also reports this, with its own message. | Nothing written. |
 | `InvalidData` | Parsed, but failed validation. | Nothing written; a rejected save is left untouched. |
 | `MalformedData` | Empty, truncated, or not save JSON. | Nothing written; the file is left untouched. |
 | `IncompatibleVersion` | Schema version outside the supported range. | Nothing written; the data is not interpreted. |
 | `ReadFailed` | The file exists but its bytes could not be read. | Nothing written. |
 | `WriteFailed` | The disk refused the write (missing permissions, full disk, bad path). | Any previous save is still intact. |
+| `OperationInProgress` | Another save or load is still running on the same file, or on the same controller. | Nothing read or written by the refused request. |
 
 Two rules follow from this and are covered by tests:
 
@@ -178,13 +211,24 @@ Two rules follow from this and are covered by tests:
   first; only after the full write succeeds is the current save moved to `.bak` and the temporary file
   renamed into place. A crash, a full disk, or an exception mid-save leaves the last good save
   readable, and the temporary file is cleaned up.
+- **A save never deletes an unusable primary (Prompt 20).** Before a save rotates the primary file, the
+  service reads it. A usable primary becomes the backup, as before. An unusable one (corrupt, truncated,
+  or written by another version) is **moved aside** to `wildshift_save.json.unusable-<UTC timestamp>` and is
+  not deleted or overwritten. The existing `.bak` stays as it was, because it is the last save known to be
+  good. A missing primary also leaves the backup alone. Previously, saving over a corrupt primary deleted
+  the backup, so the last good save could be lost in that window.
+- **Saves and loads on the same file are serialized.** `TrySave` and `TryLoad` take a lock keyed by the
+  full save path, shared by every service instance in the process, so two services that point at one file
+  cannot interleave their reads and writes.
 
 `GameSaveMapper.TryApply` applies region values through `WorldStateService` and world events through
 `PlayerActionEventRecorder`, so restored data passes the same checks as live data and no saved value
 bypasses the system that owns it. Saved regions this session has not registered are skipped and logged
 rather than failing the load, because the registered set is authored configuration. Apply into a fresh
 session: applying into a session that already holds data can stop part way through, and the returned
-error says how much was restored.
+error says how much was restored. The prototype controller follows that rule: it applies the save into a
+**staged** session, and only commits the staged state to the live session once every step has succeeded
+(see [`prototype-save-load.md`](prototype-save-load.md)).
 
 ## Saving without touching the disk every frame
 
@@ -217,6 +261,10 @@ The throttle owns no clock — the caller passes its own world time, exactly as
 `PlayerActionEventRecorder` does — and it holds no Unity objects.
 
 ## Explicit save and load
+
+The prototype's composition root, `PrototypeSaveController`, performs these steps for the Nacre scene
+(development keys, staged load, and recovery rules are in [`prototype-save-load.md`](prototype-save-load.md)).
+The generic sequence is:
 
 ```csharp
 // Save
@@ -263,6 +311,23 @@ Edit Mode tests live in `Assets/_Project/Tests/EditMode/`:
   rejecting an invalid or null save without changing the session.
 - `SaveWriteThrottleTests.cs` covers the dirty flag, the first write, interval spacing, retrying after
   a write that was not reported as done, a non-finite clock, and interval argument guards.
+- `GameSaveSessionFieldsTests.cs` (Prompt 20) covers capture of the region, time, and sample fields;
+  validation of each new field; a JSON round trip; and a hand-written version-1 file from before the fields
+  existed, which must still read with safe defaults.
+- `SaveRestorePolicyTests.cs` (Prompt 20) covers the registry check for a saved region claim, the placement
+  rules (valid pose kept, below-world, obstructed, and non-finite poses replaced by the safe spawn), and the
+  clock time a load restores.
+- `PrototypeSaveControllerTests.cs` (Prompt 20) runs the controller against scene-shaped objects built in
+  code. It covers the full save, collect, save, move, load sequence; loading an earlier save makes the sample
+  collectable again; the bounded history in a save; missing, malformed, unsupported-version, unknown-region,
+  obstructed, below-world, and unknown-sample data; and a controller that is not wired up.
+- `LocalSaveServiceTests.cs` gained two Prompt 20 tests: saving over an unusable primary keeps it and the
+  backup, and saving while the primary is missing keeps the backup.
+- `WorldClockTests.cs` gained tests for `RestoreElapsedTicks`: it may move time backwards, ignores pause,
+  raises no event, clears the sub-tick remainder, rejects out-of-range values, and cannot be called from a
+  `TimeAdvanced` subscriber.
+- `EnvironmentalSampleInteractableTests.cs` gained tests showing that `RestoreCollectedState` marks a sample
+  collected without recording an event, and can make it collectable again.
 
 Run them with the project's Edit Mode suite in Unity 6000.3.24f1:
 
@@ -272,8 +337,9 @@ Unity -batchmode -nographics -projectPath . -runTests -testPlatform EditMode \
 ```
 
 Unity is not installed in the agent environment, so the Edit Mode suite still has to be run in the
-Unity Editor. The new and changed C# files were syntax-checked there with a tree-sitter C# parse;
-type checking and the tests themselves happen in Unity.
+Unity Editor. The new and changed C# files were syntax-checked with a tree-sitter C# parse. Type checking
+and the tests themselves have not been run; they happen in Unity. [`prototype-save-load.md`](prototype-save-load.md)
+records exactly what was and was not verified for Prompt 20.
 
 ## Extending later
 

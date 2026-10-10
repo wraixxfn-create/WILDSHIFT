@@ -1,5 +1,6 @@
 using System;
 using UnityEngine;
+using Wildshift.World.Regions;
 
 namespace Wildshift.Persistence
 {
@@ -9,17 +10,24 @@ namespace Wildshift.Persistence
     /// scene that provides a body to place. Only data that already exists in the prototype is
     /// stored: no health, inventory, or progression model is saved yet.
     /// </summary>
+    /// <remarks>
+    /// <see cref="RegionId"/> was added to this block without a schema bump. It is optional: a save
+    /// written before it existed reads as "outside all regions". The position stays authoritative; the
+    /// region ID is only a claim that is checked against the region registry when the save is loaded.
+    /// </remarks>
     [Serializable]
     public sealed class PlayerSaveData
     {
         [SerializeField] private Vector3 _position;
         [SerializeField] private Quaternion _orientation;
+        [SerializeField] private string _regionId;
 
         /// <summary>Creates a player block; validation happens when the owning save is validated.</summary>
-        internal PlayerSaveData(Vector3 position, Quaternion orientation)
+        internal PlayerSaveData(Vector3 position, Quaternion orientation, string regionId = null)
         {
             _position = position;
             _orientation = orientation;
+            _regionId = regionId;
         }
 
         /// <summary>Parameterless constructor for Unity serialization only; do not call directly.</summary>
@@ -32,6 +40,13 @@ namespace Wildshift.Persistence
 
         /// <summary>World-space orientation the player was saved with.</summary>
         public Quaternion Orientation => _orientation;
+
+        /// <summary>
+        /// Stable ID of the registered region the player was in when saved, or null when the player was
+        /// outside every region. Optional: an absent value means outside. Well-formed IDs that the current
+        /// build does not register are not an error here; the load reports them and ignores them.
+        /// </summary>
+        public string RegionId => _regionId;
 
         /// <summary>
         /// Checks that the stored transform values are usable. Non-finite components are rejected, and
@@ -60,6 +75,12 @@ namespace Wildshift.Persistence
             if (squaredMagnitude < 1e-6f)
             {
                 error = "the saved player orientation is not a usable rotation";
+                return false;
+            }
+
+            if (_regionId != null && !WorldRegionIdRules.TryValidate(_regionId, out string regionError))
+            {
+                error = "the saved player region ID is not usable: " + regionError;
                 return false;
             }
 

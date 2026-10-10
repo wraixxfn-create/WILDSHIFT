@@ -82,6 +82,27 @@ namespace Wildshift.World.Clock
         }
 
         /// <summary>
+        /// Sets elapsed world time to a value taken from a save. Unlike the Advance methods, this may move
+        /// time backwards, because loading a save replaces the session's timeline. It ignores pause and time
+        /// scale, raises no <see cref="TimeAdvanced"/> event, and clears any sub-tick remainder.
+        /// </summary>
+        /// <param name="elapsedTicks">Elapsed time in ticks, from zero up to <see cref="MaxElapsedTicks"/>.</param>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when elapsedTicks is negative or above the maximum.</exception>
+        /// <exception cref="InvalidOperationException">Thrown when called from a <see cref="TimeAdvanced"/> subscriber.</exception>
+        public void RestoreElapsedTicks(long elapsedTicks)
+        {
+            if (elapsedTicks < 0L || elapsedTicks > MaxElapsedTicks)
+            {
+                throw new ArgumentOutOfRangeException(nameof(elapsedTicks), elapsedTicks,
+                    "Restored world time must be between zero and the clock's maximum elapsed ticks.");
+            }
+
+            ThrowIfRaisingTimeAdvanced();
+            _elapsedTicks = elapsedTicks;
+            _fractionalTicks = 0d;
+        }
+
+        /// <summary>
         /// Advances world time by <paramref name="realSeconds"/> multiplied by <see cref="TimeScale"/>.
         /// Does nothing while paused. Intended to be called once per frame by the owning host.
         /// </summary>
